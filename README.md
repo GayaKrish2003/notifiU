@@ -59,6 +59,7 @@ External Job Providers
 Each role has specific system access and capabilities.
 
 🧩 Core Components
+
 1️⃣ User Management
 
 Multi-role registration (Student, Lecturer, Admin, Job Provider)
