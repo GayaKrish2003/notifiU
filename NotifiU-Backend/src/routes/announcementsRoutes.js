@@ -1,19 +1,16 @@
-import express from 'express';
-import { getAnnouncementById, getAnnouncements, deleteAnnouncement, deleteAnnouncementAttachment, createAnnouncement, updateAnnouncement } from '../controllers/announcementsController.js';
-import verifyToken from '../middlewares/authMiddleware.js';
-import authorizeRoles from '../middlewares/roleMiddleware.js';
+const express = require('express');
+const { getAnnouncementById, getAnnouncements, deleteAnnouncement, deleteAnnouncementAttachment, createAnnouncement, updateAnnouncement } = require('../controllers/announcementsController');
+const { protect } = require('../middlewares/authMiddleware');
+const authorizeRoles = require('../middlewares/roleMiddleware');
+const uploadAnnouncement = require('../middlewares/uploadAnnouncementMiddleware');
 
 const router = express.Router();
 
-router.get("/announcements", verifyToken, getAnnouncements);
-router.get("/announcements/:id", verifyToken, getAnnouncementById);
-router.post("/announcements", verifyToken, authorizeRoles("admin", "lecturer"), createAnnouncement);
-router.put("/announcements/:id", verifyToken, authorizeRoles("admin", "lecturer"), updateAnnouncement);
-router.delete("/announcements/:id", verifyToken, authorizeRoles("admin", "lecturer"), deleteAnnouncement);
-router.delete("/announcements/:id/attachments/:attachmentId", verifyToken, authorizeRoles("admin", "lecturer"), deleteAnnouncementAttachment);
+router.get("/announcements", protect, getAnnouncements);
+router.get("/announcements/:id", protect, getAnnouncementById);
+router.post("/announcements", protect, authorizeRoles("admin", "lecturer"), uploadAnnouncement.array('attachments', 5), createAnnouncement);
+router.put("/announcements/:id", protect, authorizeRoles("admin", "lecturer"), updateAnnouncement);
+router.delete("/announcements/:id", protect, authorizeRoles("admin", "lecturer"), deleteAnnouncement);
+router.delete("/announcements/:id/attachments/:attachmentId", protect, authorizeRoles("admin", "lecturer"), deleteAnnouncementAttachment);
 
-
-
-
-export default router;
-
+module.exports = router;

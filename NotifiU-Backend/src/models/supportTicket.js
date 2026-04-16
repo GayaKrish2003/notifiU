@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+const mongoose = require('mongoose');
 
 const supportTicketSchema = new mongoose.Schema(
     {
@@ -23,13 +23,17 @@ const supportTicketSchema = new mongoose.Schema(
             enum: ['open', 'in_progress', 'resolved', 'closed'],
             default: 'open',
         },
+        category: {
+            type: String,
+            enum: ['Academic', 'Administrative', 'Technical', 'General', 'Other'],
+            default: 'General',
+        },
     },
     {
         timestamps: true,
     }
 );
 
-// Fast listing of tickets by user or by status
 supportTicketSchema.index({ user_id: 1, status: 1 });
 supportTicketSchema.index({ status: 1, createdAt: -1 });
 
@@ -56,10 +60,9 @@ const ticketResponseSchema = new mongoose.Schema(
     }
 );
 
-// Efficient thread fetching for a given ticket, oldest first
 ticketResponseSchema.index({ ticket_id: 1, createdAt: 1 });
 
 const SupportTicket = mongoose.model('SupportTicket', supportTicketSchema);
 const TicketResponse = mongoose.model('TicketResponse', ticketResponseSchema);
 
-export { SupportTicket, TicketResponse };
+module.exports = { SupportTicket, TicketResponse };

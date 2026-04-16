@@ -1,30 +1,79 @@
-import jwt from 'jsonwebtoken';
+const jwt = require('jsonwebtoken');
+const User = require('../models/user');
 
-const verifyToken = (req, res, next) => {
+/**
+ * @desc    Protect middleware: Verifies the Access Token
+ */
+const protect = async (req, res, next) => {
     let token;
-    let authHeader = req.headers['authorization'] || req.headers['Authorization']
 
-    if (authHeader && authHeader.startsWith("Bearer")) {
-        token = authHeader.split(" ")[1];
-
-        if (!token) {
-            return res.status(401).json({ message: "No token, Authorization denied." })
-        }
-
+    if (
+        req.headers.authorization &&
+        req.headers.authorization.startsWith('Bearer')
+    ) {
         try {
-            const decode = jwt.verify(token, process.env.JWT_SECRET);
-            req.user = decode;
-            console.log("The decoded user is : ", req.user)
-            next();
-        } catch (error) {
-            res.status(401).json({ message: "Token is not valid" })
-        }
-    } else {
-        return res.status(401).json({ message: "No token, Authorization denied." })
+            token = req.headers.authorization.split(' ')[1];
 
+            const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+
+            req.user = await User.findById(decoded.id).select('-password');
+
+            if (!req.user) {
+                return res.status(401).json({ success: false, message: 'User no longer exists' });
+            }
+
+            if (req.user.accountStatus === 'suspended') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Your account has been suspended. Please contact the administrator.',
+                });
+            }
+
+            if (req.user.accountStatus === 'deactivated') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Your account has been deactivated. Please contact the administrator.',
+                });
+            }
+
+            if (req.user.accountStatus === 'pending') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Your account is pending approval. Please wait for administrator activation.',
+                });
+            }
+
+            return next();
+        } catch (error) {
+            console.error('Auth Error:', error.message);
+
+            if (error.name === 'TokenExpiredError') {
+                return res.status(401).json({ success: false, message: 'Token expired' });
+            }
+
+            return res.status(401).json({ success: false, message: 'Not authorized, token failed' });
+        }
     }
 
-}
+    if (!token) {
+        return res.status(401).json({ success: false, message: 'Not authorized, no token provided' });
+    }
+};
 
+/**
+ * @desc    Authorize middleware: Checks user role
+ * @param   {Array} roles - Allowed roles e.g. ['superadmin', 'student']
+ */
+const authorize = (roles) => {
+    return (req, res, next) => {
+        if (!req.user || !roles.includes(req.user.role)) {
+            return res.status(403).json({
+                success: false,
+                message: `Forbidden: Role '${req.user?.role || 'Guest'}' is not authorized to access this resource`,
+            });
+        }
+        next();
+    };
+};
 
-export default verifyToken;
+module.exports = { protect, authorize };

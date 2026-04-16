@@ -1,8 +1,15 @@
-import express from 'express';
-import { register, login } from '../controllers/authController.js';
+const express = require('express');
+const { forgotPassword, verifyOTP, resetPassword } = require('../controllers/authController');
+
 const router = express.Router();
 
-router.post('/register', register);
-router.post('/login', login);
+// POST /api/auth/forgot-password
+router.post('/forgot-password', forgotPassword);
 
-export default router;
+// POST /api/auth/verify-otp
+router.post('/verify-otp', verifyOTP);
+
+// POST /api/auth/reset-password
+router.post('/reset-password', resetPassword);
+
+module.exports = router;

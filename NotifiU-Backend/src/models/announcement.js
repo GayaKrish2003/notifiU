@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 const attachmentSchema = new mongoose.Schema({
     file_path: {
@@ -45,7 +45,6 @@ const announcementSchema = new mongoose.Schema(
             default: null,
             validate: {
                 validator: function (val) {
-                    // expiry must be after publish if both are provided
                     return !val || !this.publish_date || val > this.publish_date;
                 },
                 message: 'expiry_date must be after publish_date',
@@ -54,13 +53,8 @@ const announcementSchema = new mongoose.Schema(
         module_id: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Module',
-            default: null, // null = global announcement
+            default: null,
         },
-        // posted_by: {
-        //     type: mongoose.Schema.Types.ObjectId,
-        //     ref: 'User',
-        //     required: [true, 'posted_by is required'],
-        // },
         status: {
             type: String,
             enum: ['draft', 'published', 'archived'],
@@ -72,16 +66,14 @@ const announcementSchema = new mongoose.Schema(
         },
     },
     {
-        timestamps: true, // adds createdAt, updatedAt
+        timestamps: true,
     }
 );
 
 announcementSchema.index({ status: 1, publish_date: -1 });
-// Fast filtering by module
 announcementSchema.index({ module_id: 1, status: 1 });
-// Fast lookup of announcements by a specific poster
 announcementSchema.index({ posted_by: 1 });
 
 const Announcement = mongoose.model('Announcement', announcementSchema);
 
-export default Announcement;
+module.exports = Announcement;
