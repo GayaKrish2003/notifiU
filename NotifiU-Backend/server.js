@@ -1,7 +1,7 @@
 import express from 'express';
 import announcementsRouter from './routes/announcementsRoutes.js';
-import faqsRouter from './routes/faqsRoutes.js';
 import ticketsRouter from './routes/ticketsRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 import { connectDB } from './config/db.js';
 import dotenv from 'dotenv';
 
@@ -12,8 +12,11 @@ const PORT = process.env.PORT || 5001;
 
 connectDB();
 
+app.use(express.json());
+
+app.use("/api/auth", authRoutes)
+
 app.use("/api", announcementsRouter);
-app.use("/api", faqsRouter);
 app.use("/api", ticketsRouter);
 
 app.listen(PORT, () => {

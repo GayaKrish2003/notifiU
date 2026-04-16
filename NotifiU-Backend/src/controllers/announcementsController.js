@@ -1,64 +1,117 @@
+import Announcement from '../models/announcement.js';
+import mongoose from 'mongoose';
+
 export function getAnnouncements(req, res) {
-    res.status(200).json("Here are the announcements");
+    try {
+        const { module_id, status, priority } = req.query;
+        // Build a filter object based on query parameters
+        const filter = {};
+        if (module_id) filter.module_id = module_id;
+        if (status) filter.status = status;
+        if (priority) filter.priority = priority;
+
+        Announcement.find(filter)
+            .sort({ publish_date: -1 }) // Newest first
+            .then(announcements => res.status(200).json(announcements))
+            .catch(err => res.status(500).json({ error: 'Failed to fetch announcements' }));
+    } catch (err) {
+        console.error('Error fetching announcements:', err);
+        res.status(500).json({ error: 'An error occurred while fetching announcements' });
+    }
 }
 
-export function getAnnouncementById(req, res) {
-    const id = req.params.id;
-    res.status(200).json(`Here is the announcement with id ${id}`);
+export async function getAnnouncementById(req, res) {
+    try {
+        const announcement = await Announcement.findById(req.params.id);
+        if (!announcement) {
+            return res.status(404).json({ error: 'Announcement not found' });
+        }
+        res.status(200).json(announcement);
+    } catch (err) {
+        console.error('Error fetching announcement by ID:', err);
+        res.status(500).json({ error: 'An error occurred while fetching the announcement' });
+    }
 }
 
-export function createAnnouncement(req, res) {
-    res.status(201).json("Announcement created");
+export async function createAnnouncement(req, res) {
+    try {
+        const { title, content, priority, publish_date, expiry_date, module_id, status } = req.body; //posted_by is not in the db for now
+        const newAnnouncement = new Announcement({
+            title,
+            content,
+            priority,
+            publish_date,
+            expiry_date,
+            module_id, // add posted_by later when you add it in db
+            status
+        });
+
+        const saveAnnouncment = await newAnnouncement.save()
+        res.status(201).json(saveAnnouncment);
+
+    } catch (err) {
+        console.error('Error creating announcement:', err);
+        res.status(500).json({ error: 'An error occurred while creating the announcement' });
+    }
 }
 
-export function updateAnnouncement(req, res) {
-    const id = req.params.id;
-    res.status(200).json(`Announcement with id ${id} updated`);
+export async function updateAnnouncement(req, res) {
+    try {
+        const { title, content, priority, status, expiry_date, module_id } = req.body;
+        const updateAnnouncement = await Announcement.findByIdAndUpdate(
+            req.params.id,
+            { title, content, priority, status, expiry_date, module_id },
+            {
+                new: true,
+                runValidators: true // schema validations
+            }
+        )
+
+        if (!updateAnnouncement) {
+            return res.status(404).json({ error: 'Announcement not found' });
+        }
+        res.status(200).json(updateAnnouncement);
+
+    } catch (err) {
+        console.error('Error updating announcement:', err);
+        res.status(500).json({ error: 'An error occurred while updating the announcement' });
+    }
 }
 
-export function deleteAnnouncement(req, res) {
-    const id = req.params.id;
-    res.status(200).json(`Announcement with id ${id} deleted`);
+export async function deleteAnnouncement(req, res) {
+    try {
+        const deleteAnnouncement = await Announcement.findByIdAndDelete(req.params.id);
+        if (!deleteAnnouncement) {
+            return res.status(404).json({ error: 'Announcement not found' });
+        }
+        res.status(200).json({ message: 'Announcement deleted successfully' });
+
+    } catch (err) {
+        console.error('Error deleting announcement:', err);
+        res.status(500).json({ error: 'An error occurred while deleting the announcement' });
+    }
 }
 
 export function deleteAnnouncementAttachment(req, res) {
-    const id = req.params.id;
-    const attachmentId = req.params.attachmentId;
-    res.status(200).json(`Attachment with id ${attachmentId} deleted from announcement with id ${id}`);
+    try {
+        const { id, attachmentId } = req.params;
+        Announcement.findById(id)
+            .then(announcement => {
+                if (!announcement) {
+                    return res.status(404).json({ error: 'Announcement not found' });
+                }
+                const attachmentIndex = announcement.attachments.findIndex(att => att._id.toString() === attachmentId);
+                if (attachmentIndex === -1) {
+                    return res.status(404).json({ error: 'Attachment not found' });
+                }
+                announcement.attachments.splice(attachmentIndex, 1);
+                return announcement.save();
+            })
+            .then(updatedAnnouncement => res.status(200).json(updatedAnnouncement))
+            .catch(err => res.status(500).json({ error: 'Failed to delete announcement attachment', details: err }));
+    } catch (err) {
+        console.error('Error deleting announcement attachment:', err);
+        res.status(500).json({ error: 'An error occurred while deleting the announcement attachment' });
+    }
 }
 
-
-
-// app.get("/api/tickets", (req, res) => {
-//     res.status(200).json("Here are the tickets");
-// })
-
-// app.get("/api/tickets/:id", (req, res) => {
-//     const id = req.params.id;
-//     res.status(200).json(`Here is the ticket with id ${id}`);
-// })
-
-// app.post("/api/tickets", (req, res) => {
-//     res.status(201).json("Ticket created");
-// })
-
-// app.patch("/api/tickets/:id", (req, res) => {
-//     const id = req.params.id;
-//     res.status(200).json(`Ticket with id ${id} updated`);
-// })
-
-// app.delete("/api/tickets/:id", (req, res) => {
-//     const id = req.params.id;
-//     res.status(200).json(`Ticket with id ${id} deleted`);
-// })
-
-// app.post("/api/tickets/:id/responses", (req, res) => {
-//     const id = req.params.id;
-//     res.status(201).json(`Response added to ticket with id ${id}`);
-// })
-
-// app.delete("/api/tickets/:id/responses/:responseId", (req, res) => {
-//     const id = req.params.id;
-//     const responseId = req.params.responseId;
-//     res.status(200).json(`Response with id ${responseId} deleted from ticket with id ${id}`);
-// })

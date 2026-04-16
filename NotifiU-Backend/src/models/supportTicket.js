@@ -62,4 +62,4 @@ ticketResponseSchema.index({ ticket_id: 1, createdAt: 1 });
 const SupportTicket = mongoose.model('SupportTicket', supportTicketSchema);
 const TicketResponse = mongoose.model('TicketResponse', ticketResponseSchema);
 
-export default { SupportTicket, TicketResponse };
+export { SupportTicket, TicketResponse };

@@ -56,11 +56,11 @@ const announcementSchema = new mongoose.Schema(
             ref: 'Module',
             default: null, // null = global announcement
         },
-        posted_by: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'User',
-            required: [true, 'posted_by is required'],
-        },
+        // posted_by: {
+        //     type: mongoose.Schema.Types.ObjectId,
+        //     ref: 'User',
+        //     required: [true, 'posted_by is required'],
+        // },
         status: {
             type: String,
             enum: ['draft', 'published', 'archived'],
