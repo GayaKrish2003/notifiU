@@ -11,6 +11,7 @@ const lecturerRoutes = require('./routes/lecturerRoutes');
 const authRoutes = require('./routes/authRoutes');
 const announcementsRouter = require('./routes/announcementsRoutes');
 const ticketsRouter = require('./routes/ticketsRoutes');
+const chatRouter = require('./routes/chatRoutes');
 const { notFound, errorHandler } = require('./middlewares/errorMiddleware');
 
 // Initialize Express
@@ -44,6 +45,7 @@ app.use('/api/lecturer', lecturerRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api', announcementsRouter);
 app.use('/api', ticketsRouter);
+app.use('/api', chatRouter);
 
 // Root Endpoint
 app.get('/', (req, res) => {
