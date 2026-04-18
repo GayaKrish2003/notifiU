@@ -7,7 +7,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import Logo from '../components/Logo';
 import ProfileModal from '../components/ProfileModal';
-import { getAnnouncements } from '../services/api';
+import { getAnnouncements, getTickets, getTicketById, createTicket, addTicketResponse } from '../services/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -82,6 +82,31 @@ interface Announcement {
   expiry_date?: string;
   status: 'draft' | 'published' | 'archived';
   attachments: Attachment[];
+}
+
+type FaqView = 'faq' | 'create-ticket' | 'my-tickets' | 'ticket-detail';
+
+interface FaqItem {
+  question: string;
+  answer: string;
+  category: string;
+}
+
+interface TicketData {
+  _id: string;
+  subject: string;
+  description: string;
+  category: string;
+  status: string;
+  createdAt: string;
+  user_id: { username?: string; role?: string };
+}
+
+interface TicketResponse {
+  _id: string;
+  response_message: string;
+  createdAt: string;
+  responded_by: { username?: string; role?: string };
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -277,6 +302,99 @@ const StudentDashboard: React.FC = () => {
     navigate('/login');
   };
 
+  // ─── FAQ & Ticket state ───────────────────────────────────────────────────
+  const [faqView, setFaqView] = useState<FaqView>('faq');
+  const [faqSearch, setFaqSearch] = useState<string>('');
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [tickets, setTickets] = useState<TicketData[]>([]);
+  const [ticketsLoading, setTicketsLoading] = useState<boolean>(false);
+  const [selectedTicket, setSelectedTicket] = useState<TicketData | null>(null);
+  const [ticketResponses, setTicketResponses] = useState<TicketResponse[]>([]);
+  const [newTicketSubject, setNewTicketSubject] = useState<string>('');
+  const [newTicketDesc, setNewTicketDesc] = useState<string>('');
+  const [newTicketCategory, setNewTicketCategory] = useState<string>('General');
+  const [ticketSubmitting, setTicketSubmitting] = useState<boolean>(false);
+  const [replyMessage, setReplyMessage] = useState<string>('');
+  const [replySending, setReplySending] = useState<boolean>(false);
+
+  const FAQ_DATA: FaqItem[] = [
+    { category: 'Academic', question: 'How do I register for modules this semester?', answer: 'Log in to the student portal, navigate to Module Registration under the Academic tab, and select the modules you wish to enroll in before the registration deadline.' },
+    { category: 'Academic', question: 'Where can I find my exam timetable?', answer: 'Exam timetables are published in the Events section of your dashboard and also sent to your registered university email address two weeks before examinations begin.' },
+    { category: 'Academic', question: 'What is the grading system used at the university?', answer: 'The university uses a GPA scale of 4.0. A = 4.0, A- = 3.7, B+ = 3.3, B = 3.0, etc. Your CGPA is calculated as the weighted average of all completed modules.' },
+    { category: 'Administrative', question: 'How do I update my personal contact information?', answer: 'Go to your Profile tab and click "Edit Profile". You can update your phone number, address, and other contact details there. Changes are reflected immediately.' },
+    { category: 'Administrative', question: 'How do I apply for a fee payment extension?', answer: 'Submit a formal request through the support ticket system selecting "Administrative" as the category. Attach any supporting documents and the finance office will respond within 3 working days.' },
+    { category: 'Administrative', question: 'Where can I obtain my official enrollment certificate?', answer: 'Enrollment certificates can be requested from the Academic Registry. Submit a support ticket under the Administrative category and allow 5–7 working days for processing.' },
+    { category: 'Technical', question: 'I cannot log in to my student account. What should I do?', answer: 'First, try resetting your password using the "Forgot Password" link on the login page. If the issue persists, raise a Technical support ticket and our IT team will assist you within 24 hours.' },
+    { category: 'Technical', question: 'The portal is not loading correctly on my browser. How do I fix this?', answer: 'Clear your browser cache and cookies, then try again. We recommend using the latest version of Chrome or Firefox. If the issue continues, submit a Technical ticket with your browser details.' },
+    { category: 'General', question: 'What are the library opening hours?', answer: 'The main library is open Monday to Friday 8:00 AM – 10:00 PM, Saturday 9:00 AM – 6:00 PM, and Sunday 10:00 AM – 4:00 PM. Extended hours apply during examination periods.' },
+    { category: 'General', question: 'How can I contact my academic advisor?', answer: 'Your assigned academic advisor\'s contact details are available in the Profile section under "Academic Information". You can email them directly or book an appointment via the portal.' },
+  ];
+
+  const filteredFaqs = FAQ_DATA.filter(
+    (f) =>
+      f.question.toLowerCase().includes(faqSearch.toLowerCase()) ||
+      f.answer.toLowerCase().includes(faqSearch.toLowerCase()) ||
+      f.category.toLowerCase().includes(faqSearch.toLowerCase()),
+  );
+
+  const fetchMyTickets = (): void => {
+    setTicketsLoading(true);
+    getTickets()
+      .then((res) => setTickets(res.data as TicketData[]))
+      .catch(() => setTickets([]))
+      .finally(() => setTicketsLoading(false));
+  };
+
+  const openTicketDetail = (ticket: TicketData): void => {
+    getTicketById(ticket._id)
+      .then((res) => {
+        const data = res.data as { ticket: TicketData; responses: TicketResponse[] };
+        setSelectedTicket(data.ticket);
+        setTicketResponses(data.responses);
+        setFaqView('ticket-detail');
+      })
+      .catch(() => {
+        setSelectedTicket(ticket);
+        setTicketResponses([]);
+        setFaqView('ticket-detail');
+      });
+  };
+
+  const handleCreateTicket = (): void => {
+    if (!newTicketSubject.trim() || !newTicketDesc.trim()) return;
+    setTicketSubmitting(true);
+    createTicket({ subject: newTicketSubject, description: newTicketDesc, category: newTicketCategory })
+      .then(() => {
+        setNewTicketSubject('');
+        setNewTicketDesc('');
+        setNewTicketCategory('General');
+        setFaqView('my-tickets');
+        fetchMyTickets();
+      })
+      .catch(() => alert('Failed to create ticket. Please try again.'))
+      .finally(() => setTicketSubmitting(false));
+  };
+
+  const handleAddReply = (): void => {
+    if (!replyMessage.trim() || !selectedTicket) return;
+    setReplySending(true);
+    addTicketResponse(selectedTicket._id, replyMessage)
+      .then((res) => {
+        setTicketResponses((prev) => [...prev, res.data as TicketResponse]);
+        setReplyMessage('');
+      })
+      .catch(() => alert('Failed to send reply.'))
+      .finally(() => setReplySending(false));
+  };
+
+  const STATUS_COLOR: Record<string, string> = {
+    open: 'bg-blue-100 text-blue-700',
+    in_progress: 'bg-yellow-100 text-yellow-700',
+    resolved: 'bg-green-100 text-green-700',
+    closed: 'bg-gray-100 text-gray-500',
+  };
+
+  // ─── Announcement state ───────────────────────────────────────────────────
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [annLoading, setAnnLoading] = useState<boolean>(false);
@@ -303,7 +421,7 @@ const StudentDashboard: React.FC = () => {
   const formatTime = (iso: string) =>
     new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
-  const underConstructionTabs: TabKey[] = ['module', 'announcement', 'events', 'faqs'];
+  const underConstructionTabs: TabKey[] = ['module', 'announcement', 'events'];
 
   return (
     <div className="min-h-screen bg-white relative font-[Outfit]">
@@ -463,6 +581,252 @@ const StudentDashboard: React.FC = () => {
                 </a>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ── FAQs Tab ──────────────────────────────────────────────────────── */}
+        {activeTab === 'faqs' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-4xl mx-auto">
+
+            {/* ── FAQ List View ── */}
+            {faqView === 'faq' && (
+              <div>
+                <div className="flex justify-between items-center mb-10">
+                  <h1 className="text-3xl font-black text-[#2D3A5D]/10 tracking-[0.3em] uppercase">FAQ</h1>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => { setFaqView('my-tickets'); fetchMyTickets(); }}
+                      className="border-2 border-[#1A1C2C] text-[#1A1C2C] px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#1A1C2C] hover:text-white transition-all"
+                    >
+                      My Tickets
+                    </button>
+                    <button
+                      onClick={() => setFaqView('create-ticket')}
+                      className="bg-[#FBB017] text-white px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#e9a215] transition-all shadow-lg shadow-[#FBB017]/20"
+                    >
+                      Create a Ticket
+                    </button>
+                  </div>
+                </div>
+
+                <div className="relative mb-8">
+                  <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                  <input
+                    type="text"
+                    value={faqSearch}
+                    onChange={(e) => setFaqSearch(e.target.value)}
+                    placeholder="Search frequently asked questions..."
+                    className="w-full bg-gray-50 border border-gray-100 rounded-[1.5rem] py-4 pl-16 pr-6 text-sm outline-none focus:bg-white focus:border-[#FBB017]/30 text-[#2D3A5D] font-medium transition-all"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  {filteredFaqs.map((faq, idx) => (
+                    <div key={idx} className="bg-[#EBECEF]/40 rounded-2xl overflow-hidden transition-all">
+                      <button
+                        onClick={() => setExpandedFaq(expandedFaq === idx ? null : idx)}
+                        className="w-full flex items-center justify-between px-8 py-5 text-left hover:bg-white transition-all group"
+                      >
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                          <span className="text-[9px] font-black uppercase tracking-widest border border-[#FBB017]/40 text-[#FBB017] px-3 py-1 rounded-full shrink-0">
+                            {faq.category}
+                          </span>
+                          <span className="text-[#2D3A5D] font-bold text-sm truncate">{faq.question}</span>
+                        </div>
+                        <span className={`text-[#FBB017] font-black text-xl ml-4 shrink-0 transition-transform ${expandedFaq === idx ? 'rotate-45' : ''}`}>+</span>
+                      </button>
+                      {expandedFaq === idx && (
+                        <div className="px-8 pb-6">
+                          <p className="text-[#2D3A5D]/60 text-sm leading-relaxed border-l-2 border-[#FBB017]/30 pl-5">{faq.answer}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {filteredFaqs.length === 0 && (
+                    <p className="text-center text-[#2D3A5D]/30 font-bold tracking-widest py-16">No results found. Try creating a support ticket.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── Create Ticket View ── */}
+            {faqView === 'create-ticket' && (
+              <div>
+                <div className="flex items-center gap-6 mb-10">
+                  <button onClick={() => setFaqView('faq')} className="flex items-center gap-2 text-[#2D3A5D]/40 hover:text-[#FBB017] transition-colors font-bold text-sm">
+                    <ArrowLeft size={18} /> Back
+                  </button>
+                  <h1 className="text-3xl font-black text-[#2D3A5D]/10 tracking-[0.3em] uppercase">New Ticket</h1>
+                </div>
+
+                <div className="bg-[#EBECEF]/40 rounded-[2rem] p-10 space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-[#2D3A5D] font-black text-[11px] uppercase tracking-widest">Subject</label>
+                    <input
+                      type="text"
+                      value={newTicketSubject}
+                      onChange={(e) => setNewTicketSubject(e.target.value)}
+                      placeholder="Brief description of your issue"
+                      className="w-full bg-white border border-gray-100 rounded-2xl px-6 py-4 text-sm text-[#2D3A5D] font-medium outline-none focus:border-[#FBB017]/50 transition-all"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[#2D3A5D] font-black text-[11px] uppercase tracking-widest">Category</label>
+                    <select
+                      value={newTicketCategory}
+                      onChange={(e) => setNewTicketCategory(e.target.value)}
+                      className="w-full bg-white border border-gray-100 rounded-2xl px-6 py-4 text-sm text-[#2D3A5D] font-medium outline-none focus:border-[#FBB017]/50 transition-all appearance-none cursor-pointer"
+                    >
+                      {['Academic', 'Administrative', 'Technical', 'General', 'Other'].map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[#2D3A5D] font-black text-[11px] uppercase tracking-widest">Description</label>
+                    <textarea
+                      value={newTicketDesc}
+                      onChange={(e) => setNewTicketDesc(e.target.value)}
+                      placeholder="Describe your issue in detail..."
+                      rows={6}
+                      className="w-full bg-white border border-gray-100 rounded-2xl px-6 py-4 text-sm text-[#2D3A5D] font-medium outline-none focus:border-[#FBB017]/50 transition-all resize-none"
+                    />
+                  </div>
+
+                  <div className="flex gap-4 pt-2">
+                    <button
+                      onClick={() => setFaqView('faq')}
+                      className="flex-1 border-2 border-gray-200 text-[#2D3A5D]/50 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:border-[#2D3A5D]/20 transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleCreateTicket}
+                      disabled={ticketSubmitting || !newTicketSubject.trim() || !newTicketDesc.trim()}
+                      className="flex-1 bg-[#FBB017] text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#e9a215] transition-all shadow-lg shadow-[#FBB017]/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {ticketSubmitting ? 'Submitting...' : 'Submit Ticket'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── My Tickets View ── */}
+            {faqView === 'my-tickets' && (
+              <div>
+                <div className="flex items-center justify-between mb-10">
+                  <div className="flex items-center gap-6">
+                    <button onClick={() => setFaqView('faq')} className="flex items-center gap-2 text-[#2D3A5D]/40 hover:text-[#FBB017] transition-colors font-bold text-sm">
+                      <ArrowLeft size={18} /> Back
+                    </button>
+                    <h1 className="text-3xl font-black text-[#2D3A5D]/10 tracking-[0.3em] uppercase">My Tickets</h1>
+                  </div>
+                  <button
+                    onClick={() => setFaqView('create-ticket')}
+                    className="bg-[#FBB017] text-white px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#e9a215] transition-all"
+                  >
+                    + New Ticket
+                  </button>
+                </div>
+
+                {ticketsLoading ? (
+                  <div className="flex justify-center py-20">
+                    <div className="w-8 h-8 border-4 border-[#FBB017]/30 border-t-[#FBB017] rounded-full animate-spin" />
+                  </div>
+                ) : tickets.length === 0 ? (
+                  <div className="text-center py-20">
+                    <p className="text-[#2D3A5D]/20 font-bold tracking-widest">No support tickets yet.</p>
+                    <button onClick={() => setFaqView('create-ticket')} className="mt-6 text-[#FBB017] font-black text-sm underline underline-offset-4">
+                      Create your first ticket
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {tickets.map((t) => (
+                      <div
+                        key={t._id}
+                        onClick={() => openTicketDetail(t)}
+                        className="bg-[#EBECEF]/40 hover:bg-white border border-transparent hover:border-[#FBB017]/10 rounded-2xl px-8 py-5 cursor-pointer transition-all hover:shadow-md flex items-center justify-between group"
+                      >
+                        <div className="flex-1 min-w-0 pr-6">
+                          <p className="text-[#2D3A5D] font-bold text-sm truncate mb-1">{t.subject}</p>
+                          <p className="text-[#2D3A5D]/40 font-medium text-xs">{t.category} · {new Date(t.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                        </div>
+                        <span className={`text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shrink-0 ${STATUS_COLOR[t.status] || 'bg-gray-100 text-gray-500'}`}>
+                          {t.status.replace('_', ' ')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Ticket Detail View ── */}
+            {faqView === 'ticket-detail' && selectedTicket && (
+              <div>
+                <div className="flex items-center gap-6 mb-10">
+                  <button onClick={() => { setFaqView('my-tickets'); fetchMyTickets(); }} className="flex items-center gap-2 text-[#2D3A5D]/40 hover:text-[#FBB017] transition-colors font-bold text-sm">
+                    <ArrowLeft size={18} /> Back
+                  </button>
+                  <h1 className="text-3xl font-black text-[#2D3A5D]/10 tracking-[0.3em] uppercase">Ticket Detail</h1>
+                </div>
+
+                <div className="bg-[#EBECEF]/40 rounded-2xl px-8 py-6 mb-4">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1 min-w-0 pr-6">
+                      <p className="text-[#2D3A5D] font-black text-base mb-1">{selectedTicket.subject}</p>
+                      <p className="text-[#2D3A5D]/40 text-xs font-medium">{selectedTicket.category} · {new Date(selectedTicket.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                    </div>
+                    <span className={`text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shrink-0 ${STATUS_COLOR[selectedTicket.status] || 'bg-gray-100 text-gray-500'}`}>
+                      {selectedTicket.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <p className="text-[#2D3A5D]/70 text-sm leading-relaxed">{selectedTicket.description}</p>
+                </div>
+
+                {/* Responses */}
+                {ticketResponses.length > 0 && (
+                  <div className="space-y-3 mb-4">
+                    <p className="text-[#2D3A5D]/30 font-black text-[10px] uppercase tracking-widest px-2">Responses</p>
+                    {ticketResponses.map((r) => (
+                      <div key={r._id} className={`rounded-2xl px-8 py-5 ${r.responded_by?.role === 'student' ? 'bg-[#FFF9EE] border border-[#FBB017]/10' : 'bg-white border border-gray-100'}`}>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className={`text-[10px] font-black uppercase tracking-widest ${r.responded_by?.role === 'student' ? 'text-[#FBB017]' : 'text-[#2D3A5D]/40'}`}>
+                            {r.responded_by?.role === 'student' ? 'You' : (r.responded_by?.username || 'Support Staff')}
+                          </span>
+                          <span className="text-[#2D3A5D]/30 text-[10px]">{new Date(r.createdAt).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        <p className="text-[#2D3A5D]/70 text-sm leading-relaxed">{r.response_message}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Reply box — only if ticket is not closed */}
+                {selectedTicket.status !== 'closed' && (
+                  <div className="bg-[#EBECEF]/40 rounded-2xl px-8 py-6 flex gap-4 items-end">
+                    <textarea
+                      value={replyMessage}
+                      onChange={(e) => setReplyMessage(e.target.value)}
+                      placeholder="Add a reply or additional information..."
+                      rows={3}
+                      className="flex-1 bg-white border border-gray-100 rounded-2xl px-5 py-3 text-sm text-[#2D3A5D] font-medium outline-none focus:border-[#FBB017]/50 transition-all resize-none"
+                    />
+                    <button
+                      onClick={handleAddReply}
+                      disabled={replySending || !replyMessage.trim()}
+                      className="bg-[#FBB017] text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#e9a215] transition-all disabled:opacity-50 shrink-0"
+                    >
+                      {replySending ? 'Sending...' : 'Reply'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

@@ -1,4 +1,5 @@
-import React, { useEffect, useState, ChangeEvent } from 'react';
+import React, { useEffect, useState } from 'react';
+import type { ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Home, BookOpen, Briefcase, Calendar, MessageCircleQuestion,
@@ -9,11 +10,12 @@ import Logo from '../components/Logo';
 import ProfileModal from '../components/ProfileModal';
 import AdminUserEditModal from '../components/AdminUserEditModal';
 import ActivityModal from '../components/ActivityModal';
-import api, { getUsersByRole, updateAccountStatus, exportUsersCSV, exportUsersExcel, deleteUser, getUserActivity } from '../services/api';
+import api, { getUsersByRole, updateAccountStatus, exportUsersCSV, exportUsersExcel, deleteUser, getUserActivity, getTickets, getTicketById, updateTicket, deleteTicket, addTicketResponse } from '../services/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type TabKey = 'home' | 'module' | 'career' | 'events' | 'faqs' | 'profile';
+type TicketView = 'list' | 'detail';
 type ExportFormat = 'excel' | 'csv';
 type AccountStatus = 'active' | 'pending' | 'suspended' | 'deactivated';
 
@@ -52,6 +54,23 @@ interface RoleOption {
 interface ColumnDef {
   key: string;
   label: string;
+}
+
+interface TicketData {
+  _id: string;
+  subject: string;
+  description: string;
+  category: string;
+  status: string;
+  createdAt: string;
+  user_id: { _id?: string; username?: string; role?: string };
+}
+
+interface TicketResponseData {
+  _id: string;
+  response_message: string;
+  createdAt: string;
+  responded_by: { username?: string; role?: string };
 }
 
 // ─── ExportModal ──────────────────────────────────────────────────────────────
@@ -363,7 +382,7 @@ const SuperAdminDashboard: React.FC = () => {
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
   const [userToEdit, setUserToEdit] = useState<UserData | null>(null);
-  const [activityModalUser, setActivityModalUser] = useState<UserData | null>(null);
+  const [activityModalUser, setActivityModalUser] = useState<{ name: string; email: string; role: string; [key: string]: unknown } | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('home');
   const [selectedRole, setSelectedRole] = useState<string>('all');
   const [showDropdown, setShowDropdown] = useState<boolean>(false);
@@ -458,7 +477,7 @@ const SuperAdminDashboard: React.FC = () => {
     try {
       const response = await getUserActivity(userId);
       if (response.data.success) {
-        setActivityModalUser(response.data.user as UserData);
+        setActivityModalUser(response.data.user as { name: string; email: string; role: string; [key: string]: unknown });
       }
     } catch (err: unknown) {
       alert((err as ApiError).response?.data?.message || 'Failed to load user activity');
@@ -516,12 +535,102 @@ const SuperAdminDashboard: React.FC = () => {
     }
   }, [activeTab, selectedRole, searchQuery, statusFilter]);
 
+  useEffect(() => {
+    if (activeTab === 'faqs') {
+      fetchAllTickets();
+    }
+  }, [activeTab]);
+
   const handleLogout = (): void => {
     localStorage.clear();
     navigate('/login');
   };
 
-  const underConstructionTabs: TabKey[] = ['module', 'career', 'events', 'faqs'];
+  // ─── Ticket state ─────────────────────────────────────────────────────────
+  const [ticketView, setTicketView] = useState<TicketView>('list');
+  const [allTickets, setAllTickets] = useState<TicketData[]>([]);
+  const [ticketsLoading, setTicketsLoading] = useState<boolean>(false);
+  const [selectedTicket, setSelectedTicket] = useState<TicketData | null>(null);
+  const [ticketResponses, setTicketResponses] = useState<TicketResponseData[]>([]);
+  const [adminReply, setAdminReply] = useState<string>('');
+  const [adminReplySending, setAdminReplySending] = useState<boolean>(false);
+  const [ticketStatusUpdating, setTicketStatusUpdating] = useState<boolean>(false);
+  const [ticketSearchQuery, setTicketSearchQuery] = useState<string>('');
+
+  const TICKET_STATUS_COLOR: Record<string, string> = {
+    open: 'bg-blue-100 text-blue-700',
+    in_progress: 'bg-yellow-100 text-yellow-700',
+    resolved: 'bg-green-100 text-green-700',
+    closed: 'bg-gray-100 text-gray-500',
+  };
+
+  const fetchAllTickets = (): void => {
+    setTicketsLoading(true);
+    getTickets()
+      .then((res) => setAllTickets(res.data as TicketData[]))
+      .catch(() => setAllTickets([]))
+      .finally(() => setTicketsLoading(false));
+  };
+
+  const openAdminTicketDetail = (ticket: TicketData): void => {
+    getTicketById(ticket._id)
+      .then((res) => {
+        const data = res.data as { ticket: TicketData; responses: TicketResponseData[] };
+        setSelectedTicket(data.ticket);
+        setTicketResponses(data.responses);
+        setTicketView('detail');
+      })
+      .catch(() => {
+        setSelectedTicket(ticket);
+        setTicketResponses([]);
+        setTicketView('detail');
+      });
+  };
+
+  const handleAdminStatusChange = (ticketId: string, status: string): void => {
+    setTicketStatusUpdating(true);
+    updateTicket(ticketId, { status })
+      .then(() => {
+        setSelectedTicket((prev) => prev ? { ...prev, status } : prev);
+        setAllTickets((prev) => prev.map((t) => t._id === ticketId ? { ...t, status } : t));
+      })
+      .catch(() => alert('Failed to update ticket status.'))
+      .finally(() => setTicketStatusUpdating(false));
+  };
+
+  const handleAdminReply = (): void => {
+    if (!adminReply.trim() || !selectedTicket) return;
+    setAdminReplySending(true);
+    addTicketResponse(selectedTicket._id, adminReply)
+      .then((res) => {
+        setTicketResponses((prev) => [...prev, res.data as TicketResponseData]);
+        setAdminReply('');
+        // auto-move to in_progress if still open
+        if (selectedTicket.status === 'open') {
+          handleAdminStatusChange(selectedTicket._id, 'in_progress');
+        }
+      })
+      .catch(() => alert('Failed to send reply.'))
+      .finally(() => setAdminReplySending(false));
+  };
+
+  const handleAdminDeleteTicket = (ticketId: string): void => {
+    if (!window.confirm('Permanently delete this ticket and all its responses?')) return;
+    deleteTicket(ticketId)
+      .then(() => {
+        setAllTickets((prev) => prev.filter((t) => t._id !== ticketId));
+        if (ticketView === 'detail') setTicketView('list');
+      })
+      .catch(() => alert('Failed to delete ticket.'));
+  };
+
+  const filteredTickets = allTickets.filter((t) =>
+    t.subject.toLowerCase().includes(ticketSearchQuery.toLowerCase()) ||
+    t.category.toLowerCase().includes(ticketSearchQuery.toLowerCase()) ||
+    t.status.toLowerCase().includes(ticketSearchQuery.toLowerCase()),
+  );
+
+  const underConstructionTabs: TabKey[] = ['module', 'career', 'events'];
 
   return (
     <div className="min-h-screen bg-white relative font-[Outfit]">
@@ -700,6 +809,183 @@ const SuperAdminDashboard: React.FC = () => {
                 onViewActivity={handleViewActivity}
                 currentUserId={fullUserData?._id}
               />
+            )}
+          </div>
+        )}
+
+        {/* ── FAQs / Tickets Tab ──────────────────────────────────────────── */}
+        {activeTab === 'faqs' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+
+            {/* ── Ticket List ── */}
+            {ticketView === 'list' && (
+              <div>
+                <div className="flex justify-between items-center mb-10">
+                  <h1 className="text-2xl font-black text-[#2D3A5D] tracking-tight">Support Tickets</h1>
+                  <button
+                    onClick={fetchAllTickets}
+                    className="border-2 border-[#1A1C2C] text-[#1A1C2C] px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#1A1C2C] hover:text-white transition-all"
+                  >
+                    Refresh
+                  </button>
+                </div>
+
+                <div className="relative mb-8">
+                  <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Search by subject, category or status..."
+                    value={ticketSearchQuery}
+                    onChange={(e) => setTicketSearchQuery(e.target.value)}
+                    className="w-full bg-white border-2 border-gray-100 pl-14 pr-6 py-3 rounded-2xl font-bold text-sm text-[#2D3A5D] focus:border-[#FBB017] outline-none transition-all placeholder:text-gray-300"
+                  />
+                </div>
+
+                {ticketsLoading ? (
+                  <div className="flex justify-center py-32">
+                    <div className="w-10 h-10 border-4 border-[#FBB017]/30 border-t-[#FBB017] rounded-full animate-spin" />
+                  </div>
+                ) : filteredTickets.length === 0 ? (
+                  <div className="text-center py-20 text-gray-300 font-bold tracking-widest uppercase text-sm">
+                    {allTickets.length === 0 ? 'No tickets yet. Click Refresh to load.' : 'No tickets match your search.'}
+                  </div>
+                ) : (
+                  <div className="overflow-hidden rounded-[2rem] border border-gray-100">
+                    {/* Header */}
+                    <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] bg-[#F8F9FA] px-8 py-5 border-b border-gray-100 gap-4">
+                      {['Subject', 'Category', 'Status', 'Date', 'Actions'].map((h) => (
+                        <p key={h} className="text-[#2D3A5D]/60 font-black text-[11px] uppercase tracking-widest">{h}</p>
+                      ))}
+                    </div>
+
+                    {filteredTickets.map((t, idx) => (
+                      <div
+                        key={t._id}
+                        className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] items-center px-8 py-5 border-b border-gray-50 hover:bg-[#FFF9EE]/30 transition-colors gap-4"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-[#2D3A5D] font-bold text-sm truncate">{t.subject}</p>
+                          <p className="text-[#2D3A5D]/40 text-[10px] font-medium mt-0.5">
+                            {t.user_id?.username || `User #${idx + 1}`}
+                          </p>
+                        </div>
+                        <p className="text-[#2D3A5D]/60 font-bold text-xs uppercase">{t.category}</p>
+                        <span className={`text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full w-fit ${TICKET_STATUS_COLOR[t.status] || 'bg-gray-100 text-gray-500'}`}>
+                          {t.status.replace('_', ' ')}
+                        </span>
+                        <p className="text-[#2D3A5D]/40 font-medium text-xs">
+                          {new Date(t.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => openAdminTicketDetail(t)}
+                            className="bg-[#1A1C2C] text-white px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-[#2D3A5D] transition-all"
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={() => handleAdminDeleteTicket(t._id)}
+                            className="bg-rose-50 text-rose-600 p-2 rounded-xl hover:bg-rose-100 transition-all"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Ticket Detail ── */}
+            {ticketView === 'detail' && selectedTicket && (
+              <div>
+                <div className="flex items-center gap-6 mb-10">
+                  <button
+                    onClick={() => { setTicketView('list'); fetchAllTickets(); }}
+                    className="flex items-center gap-2 text-[#2D3A5D]/40 hover:text-[#FBB017] transition-colors font-bold text-sm"
+                  >
+                    <ChevronDown size={18} className="rotate-90" /> Back
+                  </button>
+                  <h1 className="text-2xl font-black text-[#2D3A5D] tracking-tight">Ticket Detail</h1>
+                  <div className="flex-1" />
+                  <button
+                    onClick={() => handleAdminDeleteTicket(selectedTicket._id)}
+                    className="flex items-center gap-2 bg-rose-50 text-rose-600 px-5 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-100 transition-all"
+                  >
+                    <Trash2 size={14} /> Delete Ticket
+                  </button>
+                </div>
+
+                {/* Ticket info card */}
+                <div className="bg-[#EBECEF]/40 rounded-2xl px-8 py-6 mb-4">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1 min-w-0 pr-6">
+                      <p className="text-[#2D3A5D] font-black text-base mb-1">{selectedTicket.subject}</p>
+                      <p className="text-[#2D3A5D]/40 text-xs font-medium">
+                        {selectedTicket.category} · {selectedTicket.user_id?.username || 'Unknown User'} · {new Date(selectedTicket.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <select
+                        value={selectedTicket.status}
+                        disabled={ticketStatusUpdating}
+                        onChange={(e) => handleAdminStatusChange(selectedTicket._id, e.target.value)}
+                        className={`text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full outline-none border-none cursor-pointer appearance-none ${TICKET_STATUS_COLOR[selectedTicket.status] || 'bg-gray-100 text-gray-500'} disabled:opacity-70`}
+                      >
+                        <option value="open">Open</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="resolved">Resolved</option>
+                        <option value="closed">Closed</option>
+                      </select>
+                    </div>
+                  </div>
+                  <p className="text-[#2D3A5D]/70 text-sm leading-relaxed">{selectedTicket.description}</p>
+                </div>
+
+                {/* Responses */}
+                {ticketResponses.length > 0 && (
+                  <div className="space-y-3 mb-4">
+                    <p className="text-[#2D3A5D]/30 font-black text-[10px] uppercase tracking-widest px-2">Responses ({ticketResponses.length})</p>
+                    {ticketResponses.map((r) => {
+                      const isStaff = r.responded_by?.role !== 'student';
+                      return (
+                        <div key={r._id} className={`rounded-2xl px-8 py-5 ${isStaff ? 'bg-[#1A1C2C]/5 border border-[#1A1C2C]/10' : 'bg-white border border-gray-100'}`}>
+                          <div className="flex justify-between items-center mb-2">
+                            <span className={`text-[10px] font-black uppercase tracking-widest ${isStaff ? 'text-[#2D3A5D]' : 'text-[#FBB017]'}`}>
+                              {isStaff ? (r.responded_by?.username || 'Staff') : 'Student'}
+                            </span>
+                            <span className="text-[#2D3A5D]/30 text-[10px]">
+                              {new Date(r.createdAt).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <p className="text-[#2D3A5D]/70 text-sm leading-relaxed">{r.response_message}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Admin reply box */}
+                {selectedTicket.status !== 'closed' && (
+                  <div className="bg-[#EBECEF]/40 rounded-2xl px-8 py-6 flex gap-4 items-end">
+                    <textarea
+                      value={adminReply}
+                      onChange={(e) => setAdminReply(e.target.value)}
+                      placeholder="Type your response to the student..."
+                      rows={3}
+                      className="flex-1 bg-white border border-gray-100 rounded-2xl px-5 py-3 text-sm text-[#2D3A5D] font-medium outline-none focus:border-[#FBB017]/50 transition-all resize-none"
+                    />
+                    <button
+                      onClick={handleAdminReply}
+                      disabled={adminReplySending || !adminReply.trim()}
+                      className="bg-[#FBB017] text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#e9a215] transition-all disabled:opacity-50 shrink-0"
+                    >
+                      {adminReplySending ? 'Sending...' : 'Reply'}
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}

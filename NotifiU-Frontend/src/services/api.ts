@@ -140,8 +140,18 @@ export const getAnnouncements = (filters: AnnouncementFilters = {}): Promise<Axi
 export const getAnnouncementById = (id: string): Promise<AxiosResponse> =>
   api.get(`/announcements/${id}`);
 
-export const createAnnouncement = (data: AnnouncementCreateData): Promise<AxiosResponse> =>
-  api.post('/announcements', data);
+export const createAnnouncement = (data: AnnouncementCreateData, files?: File[]): Promise<AxiosResponse> => {
+  if (files && files.length > 0) {
+    const form = new FormData();
+    (Object.keys(data) as (keyof AnnouncementCreateData)[]).forEach((key) => {
+      const val = data[key];
+      if (val !== undefined) form.append(key, val);
+    });
+    files.forEach((f) => form.append('attachments', f));
+    return api.post('/announcements', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  }
+  return api.post('/announcements', data);
+};
 
 export const updateAnnouncement = (id: string, data: Partial<AnnouncementCreateData>): Promise<AxiosResponse> =>
   api.put(`/announcements/${id}`, data);
@@ -151,5 +161,20 @@ export const deleteAnnouncement = (id: string): Promise<AxiosResponse> =>
 
 export const deleteAnnouncementAttachment = (id: string, attachmentId: string): Promise<AxiosResponse> =>
   api.delete(`/announcements/${id}/attachments/${attachmentId}`);
+
+// Ticket APIs
+export interface TicketCreateData {
+  subject: string;
+  description: string;
+  category?: string;
+}
+
+export const getTickets = (): Promise<AxiosResponse> => api.get('/tickets');
+export const getTicketById = (id: string): Promise<AxiosResponse> => api.get(`/tickets/${id}`);
+export const createTicket = (data: TicketCreateData): Promise<AxiosResponse> => api.post('/tickets', data);
+export const updateTicket = (id: string, data: Partial<TicketCreateData> & { status?: string }): Promise<AxiosResponse> => api.patch(`/tickets/${id}`, data);
+export const deleteTicket = (id: string): Promise<AxiosResponse> => api.delete(`/tickets/${id}`);
+export const addTicketResponse = (id: string, response_message: string): Promise<AxiosResponse> => api.post(`/tickets/${id}/responses`, { response_message });
+export const deleteTicketResponse = (id: string, responseId: string): Promise<AxiosResponse> => api.delete(`/tickets/${id}/responses/${responseId}`);
 
 export default api;
