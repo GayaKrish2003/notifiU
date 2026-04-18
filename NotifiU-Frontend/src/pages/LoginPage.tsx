@@ -9,6 +9,10 @@ type UserRole = "superadmin" | "lecturer" | string;
 
 interface LoginResponse {
   role: UserRole;
+  accessToken?: string;
+  token?: string;
+  name?: string;
+  email?: string;
   [key: string]: unknown;
 }
 
@@ -24,14 +28,27 @@ const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleSubmit = async (
+    e: React.FormEvent<HTMLFormElement>,
+  ): Promise<void> => {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
       const response = await login({ email, password });
       const data = response.data as LoginResponse;
-      localStorage.setItem("user", JSON.stringify(data));
+      const accessToken = data.accessToken || data.token;
+      if (accessToken) {
+        localStorage.setItem("token", accessToken);
+      }
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          accessToken: accessToken,
+          name: data.name,
+          email: data.email,
+        }),
+      );
 
       if (data.role === "superadmin") {
         navigate("/admin-dashboard");

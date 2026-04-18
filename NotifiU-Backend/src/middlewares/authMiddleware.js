@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/user');
+const User = require('../models/User');
 
 /**
  * @desc    Protect middleware: Verifies the Access Token
@@ -12,7 +12,7 @@ const protect = async (req, res, next) => {
         req.headers.authorization.startsWith('Bearer')
     ) {
         try {
-            token = req.headers.authorization.split(' ')[1];
+            token = req.headers.authorization.split(' ')[1].replace(/^"|"$/g, '');
 
             const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
 

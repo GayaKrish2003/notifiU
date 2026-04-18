@@ -1,6 +1,5 @@
 const { SupportTicket, TicketResponse } = require('../models/supportTicket');
 
-// GET /api/tickets
 async function getTickets(req, res) {
     try {
         const filter = req.user.role === 'student' ? { user_id: req.user.id } : {};
@@ -14,7 +13,6 @@ async function getTickets(req, res) {
     }
 }
 
-// GET /api/tickets/:id
 async function getTicketById(req, res) {
     try {
         const ticket = await SupportTicket.findById(req.params.id)
@@ -39,14 +37,15 @@ async function getTicketById(req, res) {
     }
 }
 
-// POST /api/tickets
 async function createTicket(req, res) {
     try {
         const { subject, description, category } = req.body;
 
+        const ticketSubject = subject ? subject : `New ${category} Ticket`;
+
         const newTicket = new SupportTicket({
-            user_id: req.user.id,
-            subject,
+            user_id: req.user._id, // අනිවාර්යයෙන්ම මෙතන '._id' කියලා තියෙන්න ඕනේ
+            subject: ticketSubject,
             description,
             category,
             status: 'open',
@@ -60,7 +59,6 @@ async function createTicket(req, res) {
     }
 }
 
-// PATCH /api/tickets/:id
 async function updateTicket(req, res) {
     try {
         const ticket = await SupportTicket.findById(req.params.id);
@@ -90,7 +88,6 @@ async function updateTicket(req, res) {
     }
 }
 
-// DELETE /api/tickets/:id
 async function deleteTicket(req, res) {
     try {
         const ticket = await SupportTicket.findByIdAndDelete(req.params.id);
@@ -107,7 +104,6 @@ async function deleteTicket(req, res) {
     }
 }
 
-// POST /api/tickets/:id/responses
 async function addResponseToTicket(req, res) {
     try {
         const ticket = await SupportTicket.findById(req.params.id);
@@ -140,7 +136,6 @@ async function addResponseToTicket(req, res) {
     }
 }
 
-// DELETE /api/tickets/:id/responses/:responseId
 async function deleteResponseFromTicket(req, res) {
     try {
         const response = await TicketResponse.findById(req.params.responseId);

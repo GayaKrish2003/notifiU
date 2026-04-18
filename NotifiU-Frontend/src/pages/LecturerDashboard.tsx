@@ -1,10 +1,24 @@
 import React, { useEffect, useState } from "react";
 import type { ChangeEvent } from "react";
+import ChatBot from "../components/ChatBot";
 import { useNavigate } from "react-router-dom";
 import {
-  Home, BookOpen, Megaphone, Calendar, MessageCircleQuestion,
-  User as UserIcon, Search, Edit3, Plus, Pencil, Eye,
-  Trash2, ArrowLeft, Paperclip, Download, X,
+  Home,
+  BookOpen,
+  Megaphone,
+  Calendar,
+  MessageCircleQuestion,
+  User as UserIcon,
+  Search,
+  Edit3,
+  Plus,
+  Pencil,
+  Eye,
+  Trash2,
+  ArrowLeft,
+  Paperclip,
+  Download,
+  X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Logo from "../components/Logo";
@@ -18,7 +32,13 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type TabKey = "home" | "module" | "announcement" | "events" | "faqs" | "profile";
+type TabKey =
+  | "home"
+  | "module"
+  | "announcement"
+  | "events"
+  | "faqs"
+  | "profile";
 type AnnouncementView = "list" | "create" | "detail";
 
 interface UserData {
@@ -42,8 +62,15 @@ interface HeaderUser {
   profileImage?: string;
 }
 
-interface ModuleItem { name: string; code: string; semester: string; }
-interface GroupItem  { name: string; students: string; }
+interface ModuleItem {
+  name: string;
+  code: string;
+  semester: string;
+}
+interface GroupItem {
+  name: string;
+  students: string;
+}
 
 interface NavItemProps {
   icon: LucideIcon;
@@ -88,17 +115,29 @@ interface CreateFormData {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  new Date(iso).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 
 const formatTime = (iso: string) =>
-  new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  new Date(iso).toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
 const PRIORITY_LABELS: Record<string, string> = {
-  low: "General", medium: "Administrative", high: "Academic", urgent: "Urgent",
+  low: "General",
+  medium: "Administrative",
+  high: "Academic",
+  urgent: "Urgent",
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  published: "Active", draft: "Draft", archived: "Archived",
+  published: "Active",
+  draft: "Draft",
+  archived: "Archived",
 };
 
 const STATUS_COLOR: Record<string, string> = {
@@ -109,19 +148,35 @@ const STATUS_COLOR: Record<string, string> = {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-const NavItem: React.FC<NavItemProps> = ({ icon: Icon, label, tab, active = false, onClick }) => (
+const NavItem: React.FC<NavItemProps> = ({
+  icon: Icon,
+  label,
+  tab,
+  active = false,
+  onClick,
+}) => (
   <div
     onClick={() => onClick(tab)}
     className="flex flex-col items-center gap-1.5 cursor-pointer transition-all duration-300 px-6 group"
   >
-    <Icon size={22} className={active ? "text-[#FBB017]" : "text-white/60 group-hover:text-white"} />
-    <span className={`text-[10px] font-black uppercase tracking-[0.1em] ${active ? "text-[#FBB017]" : "text-white/40 group-hover:text-white/80"}`}>
+    <Icon
+      size={22}
+      className={
+        active ? "text-[#FBB017]" : "text-white/60 group-hover:text-white"
+      }
+    />
+    <span
+      className={`text-[10px] font-black uppercase tracking-[0.1em] ${active ? "text-[#FBB017]" : "text-white/40 group-hover:text-white/80"}`}
+    >
       {label}
     </span>
   </div>
 );
 
-const LecturerProfileView: React.FC<LecturerProfileViewProps> = ({ userData, onEditClick }) => {
+const LecturerProfileView: React.FC<LecturerProfileViewProps> = ({
+  userData,
+  onEditClick,
+}) => {
   const modules: ModuleItem[] = [
     { name: "Software Engineering", code: "SE2020", semester: "Year 2 Sem 1" },
     { name: "Database Systems", code: "IT1102", semester: "Year 1 Sem 2" },
@@ -136,10 +191,14 @@ const LecturerProfileView: React.FC<LecturerProfileViewProps> = ({ userData, onE
     <div className="flex flex-col lg:flex-row gap-20 p-4 max-w-[1500px] mx-auto animate-in fade-in duration-700">
       <div className="flex-1 space-y-12">
         <div className="space-y-6">
-          <h2 className="text-gray-400 font-medium text-lg tracking-[0.2em] uppercase">PROFILE</h2>
+          <h2 className="text-gray-400 font-medium text-lg tracking-[0.2em] uppercase">
+            PROFILE
+          </h2>
           <div className="space-y-1">
             <h1 className="text-[#FBB017] text-2xl font-black uppercase tracking-tight">
-              {userData?.lecturerId || userData?._id?.substring(0, 8).toUpperCase() || "LEC12345"}{" "}
+              {userData?.lecturerId ||
+                userData?._id?.substring(0, 8).toUpperCase() ||
+                "LEC12345"}{" "}
               {userData?.name || "LECTURER NAME"}
             </h1>
             <p className="text-[#2D3A5D]/50 text-sm font-semibold italic">
@@ -153,8 +212,12 @@ const LecturerProfileView: React.FC<LecturerProfileViewProps> = ({ userData, onE
             { label: "PHONE", value: userData?.phonenumber },
           ].map(({ label, value }) => (
             <div key={label} className="space-y-1">
-              <p className="text-[#2D3A5D] font-black text-[11px] tracking-widest uppercase">{label}</p>
-              <p className="text-[#2D3A5D]/60 font-bold text-xs">{value || "N/A"}</p>
+              <p className="text-[#2D3A5D] font-black text-[11px] tracking-widest uppercase">
+                {label}
+              </p>
+              <p className="text-[#2D3A5D]/60 font-bold text-xs">
+                {value || "N/A"}
+              </p>
             </div>
           ))}
           <div className="pt-4">
@@ -176,8 +239,12 @@ const LecturerProfileView: React.FC<LecturerProfileViewProps> = ({ userData, onE
               { label: "Age", value: userData?.age?.toString() },
             ].map(({ label, value }) => (
               <div key={label}>
-                <p className="text-[#2D3A5D] font-black text-[11px] tracking-widest uppercase mb-1">{label}</p>
-                <p className="text-[#2D3A5D]/40 font-bold text-xs">{value || "N/A"}</p>
+                <p className="text-[#2D3A5D] font-black text-[11px] tracking-widest uppercase mb-1">
+                  {label}
+                </p>
+                <p className="text-[#2D3A5D]/40 font-bold text-xs">
+                  {value || "N/A"}
+                </p>
               </div>
             ))}
           </div>
@@ -186,18 +253,37 @@ const LecturerProfileView: React.FC<LecturerProfileViewProps> = ({ userData, onE
 
       <div className="flex-[1.2] space-y-16">
         {[
-          { title: "Assigned Modules", items: modules.map(m => ({ label: `${m.name} - ${m.code} - ${m.semester}`, btn: "VIEW" })) },
-          { title: "Student Groups",   items: groups.map(g => ({ label: `${g.name} - ${g.students}`, btn: "MANAGE" })) },
+          {
+            title: "Assigned Modules",
+            items: modules.map((m) => ({
+              label: `${m.name} - ${m.code} - ${m.semester}`,
+              btn: "VIEW",
+            })),
+          },
+          {
+            title: "Student Groups",
+            items: groups.map((g) => ({
+              label: `${g.name} - ${g.students}`,
+              btn: "MANAGE",
+            })),
+          },
         ].map((section) => (
           <div key={section.title} className="space-y-6">
             <div className="flex items-center gap-3">
               <span className="text-[#FBB017] font-black">◆</span>
-              <h2 className="text-[#FBB017] font-black text-xl tracking-wide">{section.title}</h2>
+              <h2 className="text-[#FBB017] font-black text-xl tracking-wide">
+                {section.title}
+              </h2>
             </div>
             <div className="bg-[#EBECEF]/40 rounded-[2.5rem] p-8 space-y-4 shadow-inner">
               {section.items.map((item, idx) => (
-                <div key={idx} className="bg-white/40 hover:bg-white border border-transparent rounded-2xl p-4 flex items-center justify-between transition-all group">
-                  <p className="text-[#2D3A5D] font-bold text-[10px] leading-relaxed uppercase truncate flex-1 pr-4">{item.label}</p>
+                <div
+                  key={idx}
+                  className="bg-white/40 hover:bg-white border border-transparent rounded-2xl p-4 flex items-center justify-between transition-all group"
+                >
+                  <p className="text-[#2D3A5D] font-bold text-[10px] leading-relaxed uppercase truncate flex-1 pr-4">
+                    {item.label}
+                  </p>
                   <button className="bg-[#FBB017] hover:bg-[#e9a215] text-[#2D3A5D] text-[9px] font-black px-5 py-2.5 rounded-xl shadow-lg transition-all uppercase tracking-[0.1em] shrink-0">
                     {item.btn}
                   </button>
@@ -218,7 +304,11 @@ const LecturerDashboard: React.FC = () => {
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<TabKey>("home");
   const [fullUserData, setFullUserData] = useState<UserData | null>(null);
-  const [user, setUser] = useState<HeaderUser>({ name: "Lecturer", displayId: "LEC00000", initials: "LC" });
+  const [user, setUser] = useState<HeaderUser>({
+    name: "Lecturer",
+    displayId: "LEC00000",
+    initials: "LC",
+  });
 
   // ── Announcements state ──
   const [annView, setAnnView] = useState<AnnouncementView>("list");
@@ -229,7 +319,13 @@ const LecturerDashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  const emptyForm: CreateFormData = { title: "", content: "", priority: "", expiry_date: "", publish_date: "" };
+  const emptyForm: CreateFormData = {
+    title: "",
+    content: "",
+    priority: "",
+    expiry_date: "",
+    publish_date: "",
+  };
   const [formData, setFormData] = useState<CreateFormData>(emptyForm);
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [formLoading, setFormLoading] = useState<boolean>(false);
@@ -258,41 +354,96 @@ const LecturerDashboard: React.FC = () => {
 
   const updateHeader = (userData: UserData | null): void => {
     if (!userData) return;
-    const displayId = userData.lecturerId || userData._id?.substring(0, 8).toUpperCase() || "LEC00000";
+    const displayId =
+      userData.lecturerId ||
+      userData._id?.substring(0, 8).toUpperCase() ||
+      "LEC00000";
     const names = userData.name.trim().split(" ");
     let formattedName = userData.name;
     let initials = "LC";
     if (names.length >= 2) {
       formattedName = `${names[0].charAt(0).toUpperCase()}.${names[names.length - 1]}`;
-      initials = (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+      initials = (
+        names[0].charAt(0) + names[names.length - 1].charAt(0)
+      ).toUpperCase();
     } else if (names.length === 1) {
       initials = names[0].substring(0, 2).toUpperCase();
     }
-    setUser({ name: formattedName, displayId, initials, profileImage: userData.profileImage });
+    setUser({
+      name: formattedName,
+      displayId,
+      initials,
+      profileImage: userData.profileImage,
+    });
     setFullUserData(userData);
   };
 
-  const handleLogout = (): void => { localStorage.clear(); navigate("/login"); };
+  const handleLogout = (): void => {
+    localStorage.clear();
+    navigate("/login");
+  };
 
-  const handleFormChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleFormChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
+  ) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+   const validateCreateForm = () => {
+    if (!formData.title.trim()) return "Title is required.";
+    if (!formData.content.trim()) return "Content is required.";
+    if (!formData.priority) return "Please select a category.";
+    if (!formData.publish_date) return "Published date is required.";
+
+    const today = new Date().toISOString().split("T")[0];
+
+    if (formData.publish_date < today) {
+      return "Published date cannot be in the past.";
+    }
+
+    if (formData.expiry_date && formData.expiry_date < formData.publish_date) {
+      return "Deadline must be after published date.";
+    }
+
+    return "";
   };
 
   const handlePublish = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!formData.priority) { setFormError("Please select a category."); return; }
+
+    const validationError = validateCreateForm();
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
+
     setFormLoading(true);
     setFormError("");
+
     try {
-      const data = {
-        title: formData.title,
-        content: formData.content,
-        priority: formData.priority as "low" | "medium" | "high" | "urgent",
-        expiry_date: formData.expiry_date || undefined,
-        publish_date: formData.publish_date || undefined,
-        status: "published" as const,
-      };
-      await createAnnouncement(data, attachmentFile ? [attachmentFile] : undefined);
+      const data = new FormData();
+      data.append("title", formData.title);
+      data.append("content", formData.content);
+      data.append(
+        "priority",
+        formData.priority as "low" | "medium" | "high" | "urgent",
+      );
+      data.append("status", "published");
+
+      if (formData.expiry_date) {
+        data.append("expiry_date", formData.expiry_date);
+      }
+
+      if (formData.publish_date) {
+        data.append("publish_date", formData.publish_date);
+      }
+
+      if (attachmentFile) {
+        data.append("attachments", attachmentFile);
+      }
+
+      await createAnnouncement(data);
+
       setFormData(emptyForm);
       setAttachmentFile(null);
       fetchAnnouncements();
@@ -316,6 +467,22 @@ const LecturerDashboard: React.FC = () => {
     setEditError("");
   };
 
+  const validateEditForm = () => {
+    if (!editForm.title.trim()) return "Title is required.";
+    if (!editForm.content.trim()) return "Content is required.";
+    if (!editForm.priority) return "Category is required.";
+
+    if (
+      editForm.expiry_date &&
+      editForm.publish_date &&
+      editForm.expiry_date < editForm.publish_date
+    ) {
+      return "Deadline must be after published date.";
+    }
+
+    return "";
+  };
+
   const handleEditSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editAnn) return;
@@ -330,7 +497,9 @@ const LecturerDashboard: React.FC = () => {
         status: editAnn.status,
       });
       setAnnouncements((prev) =>
-        prev.map((a) => (a._id === editAnn._id ? (updated.data as Announcement) : a)),
+        prev.map((a) =>
+          a._id === editAnn._id ? (updated.data as Announcement) : a,
+        ),
       );
       setEditAnn(null);
     } catch {
@@ -345,24 +514,26 @@ const LecturerDashboard: React.FC = () => {
       await deleteAnnouncement(id);
       setAnnouncements((prev) => prev.filter((a) => a._id !== id));
     } catch {
-      // silently fail — keep UI consistent
     } finally {
       setDeleteConfirmId(null);
     }
   };
 
-  const filteredAnnouncements = announcements.filter((a: Announcement) =>
-    PRIORITY_LABELS[a.priority]?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    new Date(a.publish_date).toLocaleDateString().includes(searchQuery) ||
-    a.title.toLowerCase().includes(searchQuery.toLowerCase()),
+  const filteredAnnouncements = announcements.filter(
+    (a: Announcement) =>
+      PRIORITY_LABELS[a.priority]
+        ?.toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
+      new Date(a.publish_date).toLocaleDateString().includes(searchQuery) ||
+      a.title.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const underConstructionTabs: TabKey[] = ["module", "events", "faqs"];
+  const underConstructionTabs: TabKey[] = ["module", "events"];
 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-white relative font-[Outfit]">
+    <div className="min-h-screen bg-white relative">
       <ProfileModal
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
@@ -375,31 +546,46 @@ const LecturerDashboard: React.FC = () => {
         <div className="fixed inset-0 bg-black/30 z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl">
             <div className="flex items-center justify-between px-8 pt-8 pb-4 border-b border-gray-100">
-              <h3 className="text-[#2D3A5D] font-black text-lg">Edit Announcement</h3>
-              <button onClick={() => setEditAnn(null)} className="text-gray-400 hover:text-[#2D3A5D] transition-colors">
+              <h3 className="text-[#2D3A5D] font-black text-lg">
+                Edit Announcement
+              </h3>
+              <button
+                onClick={() => setEditAnn(null)}
+                className="text-gray-400 hover:text-[#2D3A5D] transition-colors"
+              >
                 <X size={20} />
               </button>
             </div>
             <form onSubmit={handleEditSave} className="px-8 py-6 space-y-5">
               {editError && (
-                <div className="bg-red-50 text-red-500 text-sm p-3 rounded-xl text-center">{editError}</div>
+                <div className="bg-red-50 text-red-500 text-sm p-3 rounded-xl text-center">
+                  {editError}
+                </div>
               )}
               <div>
-                <label className="block text-sm font-semibold text-[#2D3A5D] mb-2">Title <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-semibold text-[#2D3A5D] mb-2">
+                  Title <span className="text-red-500">*</span>
+                </label>
                 <input
                   name="title"
                   value={editForm.title}
-                  onChange={(e) => setEditForm((p) => ({ ...p, title: e.target.value }))}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, title: e.target.value }))
+                  }
                   required
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-[#2D3A5D] outline-none focus:border-[#FBB017] transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-[#2D3A5D] mb-2">Description / Content <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-semibold text-[#2D3A5D] mb-2">
+                  Description / Content <span className="text-red-500">*</span>
+                </label>
                 <textarea
                   name="content"
                   value={editForm.content}
-                  onChange={(e) => setEditForm((p) => ({ ...p, content: e.target.value }))}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, content: e.target.value }))
+                  }
                   required
                   rows={4}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-[#2D3A5D] outline-none focus:border-[#FBB017] transition-colors resize-none"
@@ -407,10 +593,17 @@ const LecturerDashboard: React.FC = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-[#2D3A5D] mb-2">Category <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-semibold text-[#2D3A5D] mb-2">
+                    Category <span className="text-red-500">*</span>
+                  </label>
                   <select
                     value={editForm.priority}
-                    onChange={(e) => setEditForm((p) => ({ ...p, priority: e.target.value as CreateFormData["priority"] }))}
+                    onChange={(e) =>
+                      setEditForm((p) => ({
+                        ...p,
+                        priority: e.target.value as CreateFormData["priority"],
+                      }))
+                    }
                     className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-[#2D3A5D] outline-none focus:border-[#FBB017] transition-colors bg-white"
                   >
                     <option value="high">Academic</option>
@@ -420,11 +613,18 @@ const LecturerDashboard: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-[#2D3A5D] mb-2">Deadline Date</label>
+                  <label className="block text-sm font-semibold text-[#2D3A5D] mb-2">
+                    Deadline Date
+                  </label>
                   <input
                     type="date"
                     value={editForm.expiry_date}
-                    onChange={(e) => setEditForm((p) => ({ ...p, expiry_date: e.target.value }))}
+                    onChange={(e) =>
+                      setEditForm((p) => ({
+                        ...p,
+                        expiry_date: e.target.value,
+                      }))
+                    }
                     className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-[#2D3A5D] outline-none focus:border-[#FBB017] transition-colors"
                   />
                 </div>
@@ -454,8 +654,12 @@ const LecturerDashboard: React.FC = () => {
       {deleteConfirmId && (
         <div className="fixed inset-0 bg-black/30 z-[100] flex items-center justify-center">
           <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-sm w-full mx-4">
-            <h3 className="text-[#2D3A5D] font-black text-lg mb-2">Delete Announcement?</h3>
-            <p className="text-[#2D3A5D]/50 text-sm mb-6">This action cannot be undone.</p>
+            <h3 className="text-[#2D3A5D] font-black text-lg mb-2">
+              Delete Announcement?
+            </h3>
+            <p className="text-[#2D3A5D]/50 text-sm mb-6">
+              This action cannot be undone.
+            </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteConfirmId(null)}
@@ -477,13 +681,28 @@ const LecturerDashboard: React.FC = () => {
       {/* Header */}
       <header className="px-10 py-5 flex justify-between items-center border-b border-gray-100 bg-white sticky top-0 z-[50]">
         <Logo className="scale-[0.85] origin-left" />
-        <div onClick={() => setShowProfileModal(true)} className="flex items-center gap-4 cursor-pointer">
+        <div
+          onClick={() => setShowProfileModal(true)}
+          className="flex items-center gap-4 cursor-pointer"
+        >
           <div className="text-right">
-            <p className="text-[#2D3A5D] font-black text-xs tracking-[0.2em] mb-0.5 uppercase">{user.displayId}</p>
-            <p className="text-[#2D3A5D]/60 font-bold text-[11px] truncate max-w-[150px]">{user.name}</p>
+            <p className="text-[#2D3A5D] font-black text-xs tracking-[0.2em] mb-0.5 uppercase">
+              {user.displayId}
+            </p>
+            <p className="text-[#2D3A5D]/60 font-bold text-[11px] truncate max-w-[150px]">
+              {user.name}
+            </p>
           </div>
           <div className="w-12 h-12 bg-gradient-to-br from-[#FBB017] to-[#e9a215] rounded-full flex items-center justify-center text-[#2D3A5D] font-black text-sm shadow-[0_8px_20px_-4px_rgba(251,176,23,0.3)] overflow-hidden">
-            {user.profileImage ? <img src={user.profileImage} alt="Profile" className="w-full h-full object-cover" /> : user.initials}
+            {user.profileImage ? (
+              <img
+                src={user.profileImage}
+                alt="Profile"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              user.initials
+            )}
           </div>
         </div>
       </header>
@@ -492,27 +711,67 @@ const LecturerDashboard: React.FC = () => {
       <nav className="bg-[#1A1C2C] px-10 py-4 flex items-center justify-between shadow-lg sticky top-[89px] z-[40]">
         <div className="flex-1" />
         <div className="flex items-center gap-2">
-          <NavItem icon={Home}                  label="Home"         tab="home"         active={activeTab === "home"}         onClick={setActiveTab} />
-          <NavItem icon={BookOpen}              label="Module"       tab="module"       active={activeTab === "module"}       onClick={setActiveTab} />
-          <NavItem icon={Megaphone}             label="Announcement" tab="announcement" active={activeTab === "announcement"} onClick={setActiveTab} />
-          <NavItem icon={Calendar}              label="Events"       tab="events"       active={activeTab === "events"}       onClick={setActiveTab} />
-          <NavItem icon={MessageCircleQuestion} label="FAQs"         tab="faqs"         active={activeTab === "faqs"}         onClick={setActiveTab} />
+          <NavItem
+            icon={Home}
+            label="Home"
+            tab="home"
+            active={activeTab === "home"}
+            onClick={setActiveTab}
+          />
+          <NavItem
+            icon={BookOpen}
+            label="Module"
+            tab="module"
+            active={activeTab === "module"}
+            onClick={setActiveTab}
+          />
+          <NavItem
+            icon={Megaphone}
+            label="Announcement"
+            tab="announcement"
+            active={activeTab === "announcement"}
+            onClick={setActiveTab}
+          />
+          <NavItem
+            icon={Calendar}
+            label="Events"
+            tab="events"
+            active={activeTab === "events"}
+            onClick={setActiveTab}
+          />
+          <NavItem
+            icon={MessageCircleQuestion}
+            label="FAQs"
+            tab="faqs"
+            active={activeTab === "faqs"}
+            onClick={setActiveTab}
+          />
         </div>
         <div className="flex-1 flex justify-end">
-          <NavItem icon={UserIcon} label="Profile" tab="profile" active={activeTab === "profile"} onClick={setActiveTab} />
+          <NavItem
+            icon={UserIcon}
+            label="Profile"
+            tab="profile"
+            active={activeTab === "profile"}
+            onClick={setActiveTab}
+          />
         </div>
       </nav>
 
       {/* Content */}
       <main className="max-w-[1600px] mx-auto px-16 py-16">
-
         {/* ── HOME tab: read-only announcement list ── */}
         {activeTab === "home" && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="flex justify-between items-center mb-10">
-              <h1 className="text-2xl font-black text-[#2D3A5D]/20 tracking-[0.3em] uppercase">ANNOUNCEMENTS</h1>
+              <h1 className="text-2xl font-black text-[#2D3A5D]/20 tracking-[0.3em] uppercase">
+                ANNOUNCEMENTS
+              </h1>
               <div className="relative w-96 group">
-                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#FBB017] transition-colors" size={18} />
+                <Search
+                  className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#FBB017] transition-colors"
+                  size={18}
+                />
                 <input
                   type="text"
                   placeholder="Search by Category or Date"
@@ -521,23 +780,57 @@ const LecturerDashboard: React.FC = () => {
               </div>
             </div>
             <div className="space-y-4">
-              {annLoading && <p className="text-center text-[#2D3A5D]/30 font-bold py-16">Loading...</p>}
-              {annError  && <p className="text-center text-red-400 font-bold py-16">{annError}</p>}
-              {!annLoading && !annError && announcements.filter(a => a.status === "published").map((ann) => (
-                <div key={ann._id} className="bg-[#EBECEF]/40 hover:bg-white border border-transparent hover:border-[#FBB017]/10 rounded-2xl px-8 py-6 transition-all duration-300 hover:shadow-lg relative cursor-pointer"
-                  onClick={() => { setSelectedAnn(ann); setActiveTab("announcement"); setAnnView("detail"); }}>
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="bg-[#FBB017] text-white text-[11px] font-bold px-4 py-1.5 rounded-full">{formatDate(ann.publish_date)}</div>
-                    <div className="border border-[#FBB017] text-[#FBB017] text-[11px] font-bold px-4 py-1 rounded-full bg-white">{PRIORITY_LABELS[ann.priority]}</div>
-                  </div>
-                  <p className="text-[#2D3A5D] font-bold text-sm">{ann.title}</p>
-                  <p className="text-[#2D3A5D]/60 text-sm mt-1">{ann.content}</p>
-                  <div className="absolute right-8 bottom-5 text-[#2D3A5D]/30 font-bold text-xs tracking-widest">{formatTime(ann.publish_date)}</div>
-                </div>
-              ))}
-              {!annLoading && !annError && announcements.filter(a => a.status === "published").length === 0 && (
-                <p className="text-center text-[#2D3A5D]/30 font-bold tracking-widest py-16">No announcements yet.</p>
+              {annLoading && (
+                <p className="text-center text-[#2D3A5D]/30 font-bold py-16">
+                  Loading...
+                </p>
               )}
+              {annError && (
+                <p className="text-center text-red-400 font-bold py-16">
+                  {annError}
+                </p>
+              )}
+              {!annLoading &&
+                !annError &&
+                announcements
+                  .filter((a) => a.status === "published")
+                  .map((ann) => (
+                    <div
+                      key={ann._id}
+                      className="bg-[#EBECEF]/40 hover:bg-white border border-transparent hover:border-[#FBB017]/10 rounded-2xl px-8 py-6 transition-all duration-300 hover:shadow-lg relative cursor-pointer"
+                      onClick={() => {
+                        setSelectedAnn(ann);
+                        setActiveTab("announcement");
+                        setAnnView("detail");
+                      }}
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="bg-[#FBB017] text-white text-[11px] font-bold px-4 py-1.5 rounded-full">
+                          {formatDate(ann.publish_date)}
+                        </div>
+                        <div className="border border-[#FBB017] text-[#FBB017] text-[11px] font-bold px-4 py-1 rounded-full bg-white">
+                          {PRIORITY_LABELS[ann.priority]}
+                        </div>
+                      </div>
+                      <p className="text-[#2D3A5D] font-bold text-sm">
+                        {ann.title}
+                      </p>
+                      <p className="text-[#2D3A5D]/60 text-sm mt-1">
+                        {ann.content}
+                      </p>
+                      <div className="absolute right-8 bottom-5 text-[#2D3A5D]/30 font-bold text-xs tracking-widest">
+                        {formatTime(ann.publish_date)}
+                      </div>
+                    </div>
+                  ))}
+              {!annLoading &&
+                !annError &&
+                announcements.filter((a) => a.status === "published").length ===
+                  0 && (
+                  <p className="text-center text-[#2D3A5D]/30 font-bold tracking-widest py-16">
+                    No announcements yet.
+                  </p>
+                )}
             </div>
           </div>
         )}
@@ -548,8 +841,12 @@ const LecturerDashboard: React.FC = () => {
             {/* Top bar */}
             <div className="flex justify-end mb-6">
               <button
-                onClick={() => { setFormData(emptyForm); setFormError(""); setAnnView("create"); }}
-                className="flex items-center gap-2 bg-[#FBB017] hover:bg-[#e9a215] text-white font-bold px-6 py-3 rounded-xl shadow-lg transition-all active:scale-95 text-sm"
+                onClick={() => {
+                  setFormData(emptyForm);
+                  setFormError("");
+                  setAnnView("create");
+                }}
+                className="flex items-center gap-2 bg-[#FBB017] hover:bg-[#e9a215] text-white font-bold px-6 py-3 rounded-xl active:scale-95 text-sm"
               >
                 <Plus size={16} />
                 New Announcement
@@ -557,9 +854,14 @@ const LecturerDashboard: React.FC = () => {
             </div>
 
             <div className="flex justify-between items-center mb-6">
-              <h1 className="text-2xl font-black text-[#2D3A5D]/20 tracking-[0.3em] uppercase">ANNOUNCEMENTS</h1>
+              <h1 className="text-2xl font-bold text-[#2D3A5D]">
+                ANNOUNCEMENTS
+              </h1>
               <div className="relative w-80 group">
-                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#FBB017] transition-colors" size={16} />
+                <Search
+                  className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-[#FBB017] transition-colors"
+                  size={16}
+                />
                 <input
                   type="text"
                   value={searchQuery}
@@ -586,57 +888,98 @@ const LecturerDashboard: React.FC = () => {
                 </thead>
                 <tbody>
                   {annLoading && (
-                    <tr><td colSpan={7} className="text-center py-12 text-[#2D3A5D]/30 font-bold">Loading...</td></tr>
-                  )}
-                  {annError && (
-                    <tr><td colSpan={7} className="text-center py-12 text-red-400 font-bold">{annError}</td></tr>
-                  )}
-                  {!annLoading && !annError && filteredAnnouncements.map((ann, idx) => (
-                    <tr key={ann._id} className={`border-t border-gray-50 hover:bg-[#FAFAFA] transition-colors ${idx % 2 === 0 ? "" : "bg-gray-50/30"}`}>
-                      <td className="px-6 py-4 text-[#2D3A5D] font-medium">{ann.title}</td>
-                      <td className="px-6 py-4">
-                        <span className="border border-[#FBB017]/50 text-[#FBB017] text-[11px] font-bold px-3 py-1 rounded-full">
-                          {PRIORITY_LABELS[ann.priority]}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-[#2D3A5D]/60">University-wide</td>
-                      <td className="px-6 py-4 text-[#2D3A5D]/60">{formatDate(ann.publish_date)}</td>
-                      <td className="px-6 py-4 text-[#2D3A5D]/60">{ann.expiry_date ? formatDate(ann.expiry_date) : "—"}</td>
-                      <td className="px-6 py-4">
-                        <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${STATUS_COLOR[ann.status]}`}>
-                          {STATUS_LABEL[ann.status]}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <button
-                            title="Edit"
-                            onClick={() => openEdit(ann)}
-                            className="text-[#2D3A5D]/40 hover:text-[#FBB017] transition-colors"
-                          >
-                            <Pencil size={15} />
-                          </button>
-                          <button
-                            title="View"
-                            onClick={() => { setSelectedAnn(ann); setAnnView("detail"); }}
-                            className="text-[#2D3A5D]/40 hover:text-[#FBB017] transition-colors"
-                          >
-                            <Eye size={15} />
-                          </button>
-                          <button
-                            title="Delete"
-                            onClick={() => setDeleteConfirmId(ann._id)}
-                            className="text-[#2D3A5D]/40 hover:text-red-500 transition-colors"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="text-center py-12 text-[#2D3A5D]/30 font-bold"
+                      >
+                        Loading...
                       </td>
                     </tr>
-                  ))}
-                  {!annLoading && !annError && filteredAnnouncements.length === 0 && (
-                    <tr><td colSpan={7} className="text-center py-12 text-[#2D3A5D]/30 font-bold">No announcements found.</td></tr>
                   )}
+                  {annError && (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="text-center py-12 text-red-400 font-bold"
+                      >
+                        {annError}
+                      </td>
+                    </tr>
+                  )}
+                  {!annLoading &&
+                    !annError &&
+                    filteredAnnouncements.map((ann, idx) => (
+                      <tr
+                        key={ann._id}
+                        className={`border-t border-gray-50 hover:bg-[#FAFAFA] transition-colors ${idx % 2 === 0 ? "" : "bg-gray-50/30"}`}
+                      >
+                        <td className="px-6 py-4 text-[#2D3A5D] font-medium">
+                          {ann.title}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="border border-[#FBB017]/50 text-[#FBB017] text-[11px] font-bold px-3 py-1 rounded-full">
+                            {PRIORITY_LABELS[ann.priority]}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-[#2D3A5D]/60">
+                          University-wide
+                        </td>
+                        <td className="px-6 py-4 text-[#2D3A5D]/60">
+                          {formatDate(ann.publish_date)}
+                        </td>
+                        <td className="px-6 py-4 text-[#2D3A5D]/60">
+                          {ann.expiry_date ? formatDate(ann.expiry_date) : "—"}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`text-[11px] font-bold px-3 py-1 rounded-full ${STATUS_COLOR[ann.status]}`}
+                          >
+                            {STATUS_LABEL[ann.status]}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <button
+                              title="Edit"
+                              onClick={() => openEdit(ann)}
+                              className="text-[#2D3A5D]/40 hover:text-[#FBB017] transition-colors"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              title="View"
+                              onClick={() => {
+                                setSelectedAnn(ann);
+                                setAnnView("detail");
+                              }}
+                              className="text-[#2D3A5D]/40 hover:text-[#FBB017] transition-colors"
+                            >
+                              <Eye size={15} />
+                            </button>
+                            <button
+                              title="Delete"
+                              onClick={() => setDeleteConfirmId(ann._id)}
+                              className="text-[#2D3A5D]/40 hover:text-red-500 transition-colors"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  {!annLoading &&
+                    !annError &&
+                    filteredAnnouncements.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={7}
+                          className="text-center py-12 text-[#2D3A5D]/30 font-bold"
+                        >
+                          No announcements found.
+                        </td>
+                      </tr>
+                    )}
                 </tbody>
               </table>
             </div>
@@ -653,14 +996,20 @@ const LecturerDashboard: React.FC = () => {
               >
                 <X size={22} />
               </button>
-              <h1 className="text-2xl font-black text-[#2D3A5D]/20 tracking-[0.3em] uppercase">ANNOUNCEMENTS MANAGEMENT</h1>
+              <h1 className="text-2xl font-black text-[#2D3A5D]/20 tracking-[0.3em] uppercase">
+                ANNOUNCEMENTS MANAGEMENT
+              </h1>
             </div>
 
             <div className="max-w-2xl bg-white border border-gray-100 rounded-2xl shadow-sm p-10">
-              <h2 className="text-[#2D3A5D] font-black text-xl mb-8">Create New Announcement</h2>
+              <h2 className="text-[#2D3A5D] font-black text-xl mb-8">
+                Create New Announcement
+              </h2>
 
               {formError && (
-                <div className="bg-red-50 text-red-500 text-sm p-3 rounded-xl mb-6 text-center">{formError}</div>
+                <div className="bg-red-50 text-red-500 text-sm p-3 rounded-xl mb-6 text-center">
+                  {formError}
+                </div>
               )}
 
               <form onSubmit={handlePublish} className="space-y-6">
@@ -682,7 +1031,8 @@ const LecturerDashboard: React.FC = () => {
                 {/* Content */}
                 <div>
                   <label className="block text-sm font-semibold text-[#2D3A5D] mb-2">
-                    Description / Content <span className="text-red-500">*</span>
+                    Description / Content{" "}
+                    <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     name="content"
@@ -757,17 +1107,23 @@ const LecturerDashboard: React.FC = () => {
 
                 {/* Attachment */}
                 <div>
-                  <label className="block text-sm font-semibold text-[#2D3A5D] mb-2">Attachment (PDF / Notice)</label>
+                  <label className="block text-sm font-semibold text-[#2D3A5D] mb-2">
+                    Attachment (PDF / Notice)
+                  </label>
                   <div className="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-3">
                     <Paperclip size={16} className="text-gray-400" />
-                    <span className="text-sm text-gray-400 flex-1">{attachmentFile ? attachmentFile.name : "Choose File"}</span>
+                    <span className="text-sm text-gray-400 flex-1">
+                      {attachmentFile ? attachmentFile.name : "Choose File"}
+                    </span>
                     <label className="cursor-pointer text-[#FBB017] text-xs font-bold hover:underline">
                       Browse
                       <input
                         type="file"
                         accept=".pdf,.doc,.docx,.png,.jpg"
                         className="hidden"
-                        onChange={(e) => setAttachmentFile(e.target.files?.[0] ?? null)}
+                        onChange={(e) =>
+                          setAttachmentFile(e.target.files?.[0] ?? null)
+                        }
                       />
                     </label>
                   </div>
@@ -796,55 +1152,68 @@ const LecturerDashboard: React.FC = () => {
         )}
 
         {/* ── DETAIL VIEW ── */}
-        {activeTab === "announcement" && annView === "detail" && selectedAnn && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center gap-6 mb-10">
-              <button
-                onClick={() => setAnnView("list")}
-                className="flex items-center gap-2 text-[#2D3A5D]/40 hover:text-[#FBB017] transition-colors font-bold text-sm"
-              >
-                <ArrowLeft size={18} />
-                Back
-              </button>
-              <h1 className="text-2xl font-black text-[#2D3A5D]/20 tracking-[0.3em] uppercase">ANNOUNCEMENTS</h1>
-            </div>
-
-            <div className="bg-[#EBECEF]/40 rounded-2xl px-8 py-6 relative mb-3">
-              <div className="flex justify-between items-start mb-4">
-                <div className="bg-[#FBB017] text-white text-[11px] font-bold px-4 py-1.5 rounded-full shadow-sm">
-                  {formatDate(selectedAnn.publish_date)}
-                </div>
-                <div className="border border-[#FBB017] text-[#FBB017] text-[11px] font-bold px-4 py-1 rounded-full bg-white">
-                  {PRIORITY_LABELS[selectedAnn.priority]}
-                </div>
-              </div>
-              <div className="space-y-1 mb-8">
-                <p className="text-[#2D3A5D] font-bold text-sm">{selectedAnn.title}</p>
-                <p className="text-[#2D3A5D]/60 text-sm">{selectedAnn.content}</p>
-              </div>
-              <div className="absolute right-8 bottom-5 text-[#2D3A5D]/30 font-bold text-xs tracking-widest">
-                {formatTime(selectedAnn.publish_date)}
-              </div>
-            </div>
-
-            {selectedAnn.attachments.map((att: Attachment) => (
-              <div key={att._id} className="bg-[#EBECEF]/60 rounded-2xl px-8 py-4 flex items-center justify-between mt-2">
-                <div className="flex items-center gap-3 text-[#2D3A5D]/50">
-                  <Paperclip size={16} />
-                  <span className="text-sm font-medium">{att.original_name}</span>
-                </div>
-                <a
-                  href={`http://localhost:5005${att.file_path}`}
-                  download={att.original_name}
-                  className="border border-[#2D3A5D]/20 text-[#2D3A5D]/60 hover:border-[#FBB017] hover:text-[#FBB017] text-[11px] font-bold px-5 py-1.5 rounded-full transition-colors flex items-center gap-1.5"
+        {activeTab === "announcement" &&
+          annView === "detail" &&
+          selectedAnn && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center gap-6 mb-10">
+                <button
+                  onClick={() => setAnnView("list")}
+                  className="flex items-center gap-2 text-[#2D3A5D]/40 hover:text-[#FBB017] transition-colors font-bold text-sm"
                 >
-                  <Download size={12} />
-                  Download
-                </a>
+                  <ArrowLeft size={18} />
+                  Back
+                </button>
+                <h1 className="text-2xl font-black text-[#2D3A5D]/20 tracking-[0.3em] uppercase">
+                  ANNOUNCEMENTS
+                </h1>
               </div>
-            ))}
-          </div>
-        )}
+
+              <div className="bg-[#EBECEF]/40 rounded-2xl px-8 py-6 relative mb-3">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="bg-[#FBB017] text-white text-[11px] font-bold px-4 py-1.5 rounded-full shadow-sm">
+                    {formatDate(selectedAnn.publish_date)}
+                  </div>
+                  <div className="border border-[#FBB017] text-[#FBB017] text-[11px] font-bold px-4 py-1 rounded-full bg-white">
+                    {PRIORITY_LABELS[selectedAnn.priority]}
+                  </div>
+                </div>
+                <div className="space-y-1 mb-8">
+                  <p className="text-[#2D3A5D] font-bold text-sm">
+                    {selectedAnn.title}
+                  </p>
+                  <p className="text-[#2D3A5D]/60 text-sm">
+                    {selectedAnn.content}
+                  </p>
+                </div>
+                <div className="absolute right-8 bottom-5 text-[#2D3A5D]/30 font-bold text-xs tracking-widest">
+                  {formatTime(selectedAnn.publish_date)}
+                </div>
+              </div>
+
+              {selectedAnn.attachments.map((att: Attachment) => (
+                <div
+                  key={att._id}
+                  className="bg-[#EBECEF]/60 rounded-2xl px-8 py-4 flex items-center justify-between mt-2"
+                >
+                  <div className="flex items-center gap-3 text-[#2D3A5D]/50">
+                    <Paperclip size={16} />
+                    <span className="text-sm font-medium">
+                      {att.original_name}
+                    </span>
+                  </div>
+                  <a
+                    href={`http://localhost:5005${att.file_path}`}
+                    download={att.original_name}
+                    className="border border-[#2D3A5D]/20 text-[#2D3A5D]/60 hover:border-[#FBB017] hover:text-[#FBB017] text-[11px] font-bold px-5 py-1.5 rounded-full transition-colors flex items-center gap-1.5"
+                  >
+                    <Download size={12} />
+                    Download
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
 
         {/* ── PROFILE tab ── */}
         {activeTab === "profile" && (
@@ -852,16 +1221,31 @@ const LecturerDashboard: React.FC = () => {
             userData={fullUserData}
             onEditClick={() => {
               setShowProfileModal(true);
-              setTimeout(() => window.dispatchEvent(new CustomEvent("open-profile-edit")), 100);
+              setTimeout(
+                () =>
+                  window.dispatchEvent(new CustomEvent("open-profile-edit")),
+                100,
+              );
             }}
           />
+        )}
+
+        {/* FAQ TAB */}
+          {activeTab === "faqs" && (
+          <div className="mt-10">
+          <ChatBot />
+         </div>
         )}
 
         {/* ── Under construction ── */}
         {underConstructionTabs.includes(activeTab) && (
           <div className="flex flex-col items-center justify-center py-52 text-center animate-in zoom-in-95 duration-500">
-            <h2 className="text-3xl font-black text-[#2D3A5D]/10 tracking-[0.4em] uppercase">{activeTab} SECTION</h2>
-            <p className="text-[#2D3A5D]/20 font-bold mt-4 tracking-widest">This part is currently under construction</p>
+            <h2 className="text-3xl font-black text-[#2D3A5D]/10 tracking-[0.4em] uppercase">
+              {activeTab} SECTION
+            </h2>
+            <p className="text-[#2D3A5D]/20 font-bold mt-4 tracking-widest">
+              This part is currently under construction
+            </p>
           </div>
         )}
       </main>

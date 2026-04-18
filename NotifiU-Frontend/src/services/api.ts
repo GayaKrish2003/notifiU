@@ -1,180 +1,120 @@
-import axios from 'axios';
-import type { AxiosResponse, InternalAxiosRequestConfig, AxiosError } from 'axios';
+import axios from "axios";
 
-interface StoredUser {
-  accessToken?: string;
-  [key: string]: unknown;
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
 }
 
-interface LoginData {
-  email: string;
-  password: string;
-}
-
-interface RegisterData {
-  name: string;
-  email: string;
-  password: string;
-  [key: string]: unknown;
-}
-
-interface ProfileUpdateData {
-  name?: string;
-  profileImage?: string;
-  [key: string]: unknown;
-}
-
-interface ForgotPasswordData {
-  email: string;
-}
-
-interface VerifyOTPData {
-  email: string;
-  otp: string;
-}
-
-interface ResetPasswordData {
-  email?: string;
-  token?: string;
-  password: string;
-}
+type Payload = Record<string, unknown>;
+type ApiData = Payload | FormData;
 
 const api = axios.create({
-  baseURL: 'http://localhost:5005/api',
-  withCredentials: true,
+  baseURL: "http://localhost:5005/api",
 });
 
-// Request interceptor: Attach token if it exists
+const sanitizeToken = (value: string): string => {
+  if (value.startsWith('"') && value.endsWith('"')) {
+    return value.slice(1, -1);
+  }
+  return value;
+};
+
+const getAccessToken = (): string | null => {
+  const directToken = localStorage.getItem("token");
+  if (directToken) {
+    return sanitizeToken(directToken);
+  }
+
+  const rawUser = localStorage.getItem("user");
+  if (!rawUser) return null;
+
+  try {
+    const parsed = JSON.parse(rawUser) as {
+      accessToken?: string;
+      token?: string;
+    };
+    const fallbackToken = parsed.accessToken || parsed.token;
+    return fallbackToken ? sanitizeToken(fallbackToken) : null;
+  } catch {
+    return null;
+  }
+};
+
 api.interceptors.request.use(
-  (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
-    try {
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-        const user: StoredUser = JSON.parse(userStr);
-        if (user?.accessToken) {
-          config.headers.Authorization = `Bearer ${user.accessToken}`;
-        }
-      }
-    } catch (err) {
-      console.error('Interceptor Error:', err);
+  (config) => {
+    const token = getAccessToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error: AxiosError) => Promise.reject(error),
+  (error) => Promise.reject(error),
 );
 
-// Response interceptor: Handle unauthorized errors
-api.interceptors.response.use(
-  (response: AxiosResponse) => response,
-  (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      console.warn('Unauthorized request detected (401).');
-      // Optional: Clear storage and redirect if token is dead
-      // localStorage.removeItem('user');
-      // window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  },
-);
+// Chat Bot API - Do not change the function
+export const sendChatMessage = (messages: ChatMessage[]) =>
+  api.post("/chat", { messages });
 
-export const login = (data: LoginData): Promise<AxiosResponse> => api.post('/users/login', data);
-export const register = (role: string | null, data: RegisterData): Promise<AxiosResponse> => api.post(`/users/register/${role}`, data);
-export const getUserProfile = (): Promise<AxiosResponse> => api.get('/users/profile');
-export const getUserById = (id: string): Promise<AxiosResponse> => api.get(`/users/details/${id}`);
-export const getEditProfileRequest = (id: string | undefined): Promise<AxiosResponse> => api.get(`/users/profile/${id}`);
-export const updateEditProfileRequest = (id: string | undefined, data: ProfileUpdateData): Promise<AxiosResponse> => api.put(`/users/profile/${id}`, data);
-export const updateUserProfile = (data: ProfileUpdateData): Promise<AxiosResponse> => api.put('/users/profile', data);
+export const login = (data: Payload) => api.post("/users/login", data);
+export const register = (role: string | null, data: Payload) =>
+  api.post(`/users/register/${role}`, data);
 
-export const forgotPassword = (data: ForgotPasswordData): Promise<AxiosResponse> => api.post('/auth/forgot-password', data);
-export const verifyOTP = (data: VerifyOTPData): Promise<AxiosResponse> => api.post('/auth/verify-otp', data);
-export const resetPassword = (data: ResetPasswordData): Promise<AxiosResponse> => api.post('/auth/reset-password', data);
+export const getUserProfile = () => api.get("/users/profile");
+export const updateUserProfile = (data: Payload) =>
+  api.put("/users/profile", data);
+export const getEditProfileRequest = () => api.get("/users/profile");
+export const updateEditProfileRequest = (data: Payload) =>
+  api.put("/users/profile", data);
+export const getLecturerProfile = () => api.get("/users/lecturer-profile");
+export const updateLecturerProfile = (data: Payload) =>
+  api.put("/users/lecturer-profile", data);
+export const getStudentProfile = () => api.get("/users/student-profile");
+export const updateStudentProfile = (data: Payload) =>
+  api.put("/users/student-profile", data);
 
-// Lecturer-specific APIs
-export const getLecturerProfile = (): Promise<AxiosResponse> => api.get('/lecturer/profile');
-export const updateLecturerProfile = (data: ProfileUpdateData): Promise<AxiosResponse> => api.put('/lecturer/profile', data);
+export const getAllUsers = () => api.get("/users");
+export const getUserById = (id: string) => api.get(`/users/${id}`);
+export const getUsersByRole = (role: string) => api.get(`/users/role/${role}`);
+export const updateUserByAdmin = (id: string, data: Payload) =>
+  api.patch(`/users/${id}`, data);
+export const updateAccountStatus = (id: string, status: string) =>
+  api.patch(`/users/${id}/status`, { accountStatus: status }); // 
+export const deleteUser = (id: string) => api.delete(`/users/${id}`);
+export const exportUsersCSV = () =>
+  api.get("/users/export/csv", { responseType: "blob" });
+export const exportUsersExcel = () =>
+  api.get("/users/export/excel", { responseType: "blob" });
+export const getUserActivity = (id?: string) =>
+  api.get(id ? `/users/${id}/activity` : "/users/activity");
 
-// Admin APIs
-export const getUsersByRole = (
-  role: string,
-  search: string = '',
-  status: string = 'all',
-  page: number = 1,
-  limit: number = 50,
-): Promise<AxiosResponse> =>
-  api.get(`/users?role=${role}&search=${search}&status=${status}&page=${page}&limit=${limit}`);
-export const updateAccountStatus = (id: string, status: string): Promise<AxiosResponse> => api.patch(`/users/${id}/status`, { status });
-export const updatePaymentStatus = (id: string, status: string): Promise<AxiosResponse> => api.patch(`/users/${id}/payment-status`, { status });
-export const deleteUser = (id: string): Promise<AxiosResponse> => api.delete(`/users/${id}`);
-export const updateUserByAdmin = (id: string, data: Record<string, unknown>): Promise<AxiosResponse> => api.put(`/users/${id}`, data);
-export const getUserActivity = (id: string): Promise<AxiosResponse> => api.get(`/users/${id}/activity`);
+export const forgotPassword = (data: Payload) =>
+  api.post("/auth/forgot-password", data);
+export const verifyOTP = (data: Payload) => api.post("/auth/verify-otp", data);
+export const resetPassword = (data: Payload) =>
+  api.post("/auth/reset-password", data);
 
-export const exportUsersCSV = (role: string): Promise<AxiosResponse> => api.get(`/users/export/csv?role=${role}`, { responseType: 'blob' });
-export const exportUsersExcel = (role: string): Promise<AxiosResponse> => api.get(`/users/export/excel?role=${role}`, { responseType: 'blob' });
+export const getTickets = () => api.get("/tickets");
+export const getTicketById = (id: string) => api.get(`/tickets/${id}`);
+export const createTicket = (data: Payload) => api.post("/tickets", data);
+export const updateTicket = (id: string, data: Payload) =>
+  api.patch(`/tickets/${id}`, data);
+export const deleteTicket = (id: string) => api.delete(`/tickets/${id}`);
+export const addTicketResponse = (id: string, message: string) =>
+  api.post(`/tickets/${id}/responses`, { response_message: message });
 
-// Announcement APIs
-export interface AnnouncementFilters {
-  module_id?: string;
-  status?: 'draft' | 'published' | 'archived';
-  priority?: 'low' | 'medium' | 'high' | 'urgent';
-}
-
-export interface AnnouncementCreateData {
-  title: string;
-  content: string;
-  priority?: 'low' | 'medium' | 'high' | 'urgent';
-  publish_date?: string;
-  expiry_date?: string;
-  module_id?: string;
-  status?: 'draft' | 'published' | 'archived';
-}
-
-export const getAnnouncements = (filters: AnnouncementFilters = {}): Promise<AxiosResponse> => {
-  const params = new URLSearchParams();
-  if (filters.module_id) params.append('module_id', filters.module_id);
-  if (filters.status)    params.append('status', filters.status);
-  if (filters.priority)  params.append('priority', filters.priority);
-  const query = params.toString();
-  return api.get(`/announcements${query ? `?${query}` : ''}`);
-};
-
-export const getAnnouncementById = (id: string): Promise<AxiosResponse> =>
+export const getAnnouncements = (params?: Record<string, string>) =>
+  api.get("/announcements", { params });
+export const getAnnouncementById = (id: string) =>
   api.get(`/announcements/${id}`);
-
-export const createAnnouncement = (data: AnnouncementCreateData, files?: File[]): Promise<AxiosResponse> => {
-  if (files && files.length > 0) {
-    const form = new FormData();
-    (Object.keys(data) as (keyof AnnouncementCreateData)[]).forEach((key) => {
-      const val = data[key];
-      if (val !== undefined) form.append(key, val);
-    });
-    files.forEach((f) => form.append('attachments', f));
-    return api.post('/announcements', form, { headers: { 'Content-Type': 'multipart/form-data' } });
-  }
-  return api.post('/announcements', data);
-};
-
-export const updateAnnouncement = (id: string, data: Partial<AnnouncementCreateData>): Promise<AxiosResponse> =>
+export const createAnnouncement = (data: ApiData) =>
+  api.post("/announcements", data);
+export const updateAnnouncement = (id: string, data: ApiData) =>
   api.put(`/announcements/${id}`, data);
-
-export const deleteAnnouncement = (id: string): Promise<AxiosResponse> =>
+export const deleteAnnouncement = (id: string) =>
   api.delete(`/announcements/${id}`);
-
-export const deleteAnnouncementAttachment = (id: string, attachmentId: string): Promise<AxiosResponse> =>
-  api.delete(`/announcements/${id}/attachments/${attachmentId}`);
-
-// Ticket APIs
-export interface TicketCreateData {
-  subject: string;
-  description: string;
-  category?: string;
-}
-
-export const getTickets = (): Promise<AxiosResponse> => api.get('/tickets');
-export const getTicketById = (id: string): Promise<AxiosResponse> => api.get(`/tickets/${id}`);
-export const createTicket = (data: TicketCreateData): Promise<AxiosResponse> => api.post('/tickets', data);
-export const updateTicket = (id: string, data: Partial<TicketCreateData> & { status?: string }): Promise<AxiosResponse> => api.patch(`/tickets/${id}`, data);
-export const deleteTicket = (id: string): Promise<AxiosResponse> => api.delete(`/tickets/${id}`);
-export const addTicketResponse = (id: string, response_message: string): Promise<AxiosResponse> => api.post(`/tickets/${id}/responses`, { response_message });
-export const deleteTicketResponse = (id: string, responseId: string): Promise<AxiosResponse> => api.delete(`/tickets/${id}/responses/${responseId}`);
+export const deleteAnnouncementAttachment = (
+  id: string,
+  attachmentId: string,
+) => api.delete(`/announcements/${id}/attachments/${attachmentId}`);
 
 export default api;

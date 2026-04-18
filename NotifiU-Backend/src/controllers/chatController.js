@@ -30,11 +30,10 @@ async function chat(req, res) {
         }
 
         const model = genAI.getGenerativeModel({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-3-flash-preview',
             systemInstruction: SYSTEM_PROMPT,
         });
 
-        // All messages except the last go into history
         const history = messages.slice(0, -1).map((m) => ({
             role: m.role === 'assistant' ? 'model' : 'user',
             parts: [{ text: m.content }],
@@ -42,14 +41,26 @@ async function chat(req, res) {
 
         const lastMessage = messages[messages.length - 1];
 
-        const chatSession = model.startChat({ history });
+        const chatSession = model.startChat({
+            history: history,
+            generationConfig: {
+                maxOutputTokens: 500,
+            }
+        });
+
         const result = await chatSession.sendMessage(lastMessage.content);
-        const text = result.response.text();
+        const response = await result.response;
+        const text = response.text();
 
         res.status(200).json({ message: text });
+
     } catch (err) {
-        console.error('Chat error:', err);
-        res.status(500).json({ error: 'Failed to process chat request' });
+        console.error('--- AI Chat Error ---');
+        console.error(err.message);
+
+        res.status(500).json({
+            message: "I'm having trouble connecting right now. Please try again in a moment."
+        });
     }
 }
 
