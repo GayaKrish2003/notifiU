@@ -52,7 +52,7 @@ function AssignLecturer({ onBack }: AssignLecturerProps) {
       });
 
       await showSuccess("Assigned!", "Lecturer assigned successfully");
-
+            
       onBack();
     } catch (err: any) {
       console.log(err);

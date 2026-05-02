@@ -44,7 +44,7 @@ function CreateModule({ onBack }: CreateModuleProps) {
 
       await showSuccess("Success", "Module created successfully");
 
-      onBack();
+      onBack();      
     } catch (error: any) {
       console.log(error);
 
@@ -109,7 +109,7 @@ function CreateModule({ onBack }: CreateModuleProps) {
         </div>
 
         <div className="formButtons">
-          <button
+           <button
             className="cancelBtn"
             onClick={onBack}
           >

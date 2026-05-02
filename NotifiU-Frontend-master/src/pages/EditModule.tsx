@@ -62,8 +62,8 @@ function EditModule({ moduleId, onBack }: EditModuleProps) {
       });
 
       await showSuccess("Updated!", "Module updated successfully");
-
-      onBack();
+    
+       onBack();
     } catch (err: any) {
       console.log(err);
 
