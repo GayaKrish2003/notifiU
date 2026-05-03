@@ -1,3 +1,4 @@
+// Enrollment Management page 
 import { useEffect, useState } from "react";
 import API from "../services/api";
 import { showSuccess, showError, showConfirm } from "../utils/premiumAlert";
